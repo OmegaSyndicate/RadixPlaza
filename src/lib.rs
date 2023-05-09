@@ -7,6 +7,16 @@ pub enum PairState {
     QuoteShortage,
 }
 
+impl fmt::Display for PairState {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match self {
+            PairState::BaseShortage => write!(f, "BaseShortage"),
+            PairState::Equilibrium => write!(f, "Equilibrium"),
+            PairState::QuoteShortage => write!(f, "QuoteShortage"),
+        }
+    }
+}
+
 #[blueprint]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
@@ -110,6 +120,7 @@ mod plazapair {
                     )
                 };            
 
+            // Calculate the base[quote] price in equilibrium
             let p0 = match self.state {
                 PairState::BaseShortage => {
                     let quote_surplus = quote_actual - self.quote_target;
@@ -122,11 +133,17 @@ mod plazapair {
                 }
             };
 
+            // Set reference price to B/Q or Q/B depending on liquidity
+            let mut p_ref = match self.state {
+                PairState::BaseShortage => p0,
+                PairState::Equilibrium => if input_is_quote { p0 } else { dec!(1) / p0 },
+                PairState::QuoteShortage => dec!(1) / p0
+            };
+
             // Determine which state represents input shortage based on input type
-            let (input_shortage, mut p_ref) = if input_is_quote {
-                (PairState::QuoteShortage, p0)
-            } else {
-                (PairState::BaseShortage, dec!(1) / p0)
+            let input_shortage = match input_is_quote {
+                true => PairState::QuoteShortage,
+                false => PairState::BaseShortage
             };
 
             // Define running counters
@@ -142,9 +159,8 @@ mod plazapair {
 
                     // Update variables for outgoing part of trade
                     exchange_state = PairState::Equilibrium;
-                    p_ref = dec!(1) / p_ref;
-                    //input_actual = input_target;
                     output_actual = output_target;
+                    p_ref = dec!(1) / p_ref;
                 } else {
                     output_amount = self.calc_incoming(
                         amount_to_trade,
@@ -201,6 +217,7 @@ mod plazapair {
             // Adjust pair state variables.
             self.p0 = new_p0;
             self.state = new_state;
+            //debug!("p0: {} -- state {}", new_p0, new_state);
 
             // Update the target values and select the input and output vaults based on input_tokens type.
             let (input_vault, output_vault) = if is_quote {
@@ -237,14 +254,16 @@ mod plazapair {
         ) -> Decimal {
             // Ensure the sum of the actual and input amounts does not exceed the target
             assert!(actual + input_amount <= target, "Infeasible amount");
+            
+            // Calculate the existing surplus as per AMM curve
+            let surplus_before = (target - actual) * p_ref * target / actual;
 
-            // Calculate the corresponding output amount following the AMM formula
-            input_amount
-                * (dec!(1)
-                    - self.k_in
-                        * (target * target - actual * (actual + input_amount))
-                        / (actual * (actual + input_amount)))
-                * p_ref
+            // Calculate the new surplus as per the AMM curve
+            let actual_after = actual + input_amount;
+            let surplus_after = (target - actual_after) * p_ref * target / actual_after;
+
+            // The difference is the output amount
+            surplus_before - surplus_after
         }
 
         // Calculate the outgoing amount of output tokens given input_amount, surplus, target, actual, and p_ref
@@ -257,8 +276,12 @@ mod plazapair {
         ) -> Decimal {
             // Calibrate outgoing price curve to incoming at spot price.
             let shortage_before = target - actual;
-            let virtual_p_ref = (target * target + self.k_in * (target * target - actual * actual)) / (target * target + self.k_out * (target * target - actual * actual)) * p_ref;
-            let virtual_surplus = shortage_before * (dec!(1) + self.k_out * shortage_before / actual);
+            let target2 = target * target;
+            let actual2 = actual * actual;
+            let num = actual2 + self.k_in * (target2 - actual2);
+            let den = actual2 + self.k_out * (target2 - actual2);
+            let virtual_p_ref = num / den * p_ref;
+            let virtual_surplus = shortage_before * (dec!(1) + self.k_out * shortage_before / actual) * virtual_p_ref;
 
             // Calculate scaled surplus and input amount using p_ref
             let surplus_after = (virtual_surplus + input_amount) / virtual_p_ref;

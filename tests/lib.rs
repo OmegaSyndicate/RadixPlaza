@@ -137,4 +137,29 @@ fn test_plaza_pair() {
         vec![NonFungibleGlobalId::from_public_key(&public_key)],
     );
     save_receipt_to_file("swap.txt", &receipt);
+
+    let manifest = ManifestBuilder::new()
+    .call_method(
+        account_component,
+        "withdraw",
+        manifest_args!(quote_address, dec!(20))
+    )
+    .take_from_worktop(quote_address, |builder, quote_bucket| {
+        builder.call_method(
+            pair,
+            "swap",
+            manifest_args!(quote_bucket)
+        )
+    })
+    .call_method(
+        account_component,
+        "deposit_batch",
+        manifest_args!(ManifestExpression::EntireWorktop),
+    )
+    .build();
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&public_key)],
+    );
+    save_receipt_to_file("swap.txt", &receipt);
 }
