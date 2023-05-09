@@ -37,7 +37,7 @@ fn test_plazapair() {
         .call_method(
             account_component,
             "withdraw",
-            manifest_args!(base_address, dec!(1000))
+            manifest_args!(base_address, dec!(2000))
         )
         .call_method(
             account_component,
@@ -65,9 +65,35 @@ fn test_plazapair() {
         vec![NonFungibleGlobalId::from_public_key(&public_key)],
     );
     println!("{:?}\n", receipt);
-    let base_lp = receipt.expect_commit(true).new_resource_addresses()[0];
-    let quote_lp = receipt.expect_commit(true).new_resource_addresses()[1];
+    let _base_lp = receipt.expect_commit(true).new_resource_addresses()[0];
+    let _quote_lp = receipt.expect_commit(true).new_resource_addresses()[1];
     let pair = receipt.expect_commit(true).new_component_addresses()[0];
+
+    // Test the swap function
+    let manifest = ManifestBuilder::new()
+        .call_method(
+            account_component,
+            "withdraw",
+            manifest_args!(base_address, dec!(1))
+        )
+        .take_from_worktop(base_address, |builder, base_bucket| {
+            builder.call_method(
+                pair,
+                "swap",
+                manifest_args!(base_bucket)
+            )
+        })
+        .call_method(
+            account_component,
+            "deposit_batch",
+            manifest_args!(ManifestExpression::EntireWorktop),
+        )
+        .build();
+    let receipt = test_runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&public_key)],
+    );
+    println!("{:?}\n", receipt);
 
     // // Test the `free_token` method.
     // let manifest = ManifestBuilder::new()
