@@ -93,7 +93,7 @@ mod plazapair {
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
 
             // Set the input and output vaults and targets based on input_tokens type
-            let (mut input_actual, mut output_actual, input_target, output_target) =
+            let (input_actual, mut output_actual, input_target, output_target) =
                 if input_is_quote {
                     (
                         quote_actual,
@@ -124,9 +124,9 @@ mod plazapair {
 
             // Determine which state represents input shortage based on input type
             let (input_shortage, mut p_ref) = if input_is_quote {
-                (PairState::QuoteShortage, dec!(1) / p0)
+                (PairState::QuoteShortage, p0)
             } else {
-                (PairState::BaseShortage, p0)
+                (PairState::BaseShortage, dec!(1) / p0)
             };
 
             // Define running counters
@@ -143,7 +143,7 @@ mod plazapair {
                     // Update variables for outgoing part of trade
                     exchange_state = PairState::Equilibrium;
                     p_ref = dec!(1) / p_ref;
-                    input_actual = input_target;
+                    //input_actual = input_target;
                     output_actual = output_target;
                 } else {
                     output_amount = self.calc_incoming(
@@ -159,7 +159,6 @@ mod plazapair {
             if exchange_state != input_shortage && amount_to_trade > dec!(0) {
                 output_amount += self.calc_outgoing(
                     amount_to_trade,
-                    input_actual - input_target,
                     output_target,
                     output_actual,
                     p_ref,
@@ -190,6 +189,14 @@ mod plazapair {
 
             // Calculate the amount of output tokens and pair impact variables.
             let (output_amount, fee, new_p0, new_state) = self.quote(input_tokens.amount(), is_quote);
+
+            // Log trade event
+            let (token_in, token_out) = if is_quote {
+                ("quote", "base")
+            } else {
+                ("base", "quote")
+            };
+            info!("SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
 
             // Adjust pair state variables.
             self.p0 = new_p0;
@@ -244,52 +251,37 @@ mod plazapair {
         fn calc_outgoing(
             &self,
             input_amount: Decimal,
-            surplus: Decimal,
             target: Decimal,
-            _actual: Decimal,
+            actual: Decimal,
             p_ref: Decimal,
         ) -> Decimal {
-            // TODO: calibrate against incoming price curve..
+            // Calibrate outgoing price curve to incoming at spot price.
+            let shortage_before = target - actual;
+            let virtual_p_ref = (target * target + self.k_in * (target * target - actual * actual)) / (target * target + self.k_out * (target * target - actual * actual)) * p_ref;
+            let virtual_surplus = shortage_before * (dec!(1) + self.k_out * shortage_before / actual);
 
             // Calculate scaled surplus and input amount using p_ref
-            let current_surplus = surplus / p_ref;
-            let new_surplus = (surplus + input_amount) / p_ref;
+            let surplus_after = (virtual_surplus + input_amount) / virtual_p_ref;
 
             // Check if the egress price curve exponent (k_out) is 1
             if self.k_out == dec!(1) {
                 // Calculate the shortage before and after the operation
-                let shortage_before = target * current_surplus / (target + current_surplus);
-                let shortage_after = target * new_surplus / (target + new_surplus);
+                let shortage_after = target * surplus_after / (target + surplus_after);
 
                 // Calculate and return the difference in shortage
                 shortage_after - shortage_before
             } else {
                 // Handle other values for k_out
-                let shortage_before = target + current_surplus
+                let shortage_after = target + surplus_after
                     - Decimal::sqrt(
                         &(target * target
-                        + (dec!(4) * self.k_out - dec!(2)) * target * current_surplus
-                        + current_surplus * current_surplus)
-                    ).unwrap();
-
-                let shortage_after = target + new_surplus
-                    - Decimal::sqrt(
-                        &(target * target
-                        + (dec!(4) * self.k_out - dec!(2)) * target * new_surplus
-                        + new_surplus * new_surplus)
+                        + (dec!(4) * self.k_out - dec!(2)) * target * surplus_after
+                        + surplus_after * surplus_after)
                     ).unwrap();
 
                 // Calculate and return the difference in shortage
                 (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.k_out)
             }
         }
-
-        // // This is a method, because it needs a reference to self.  Methods can only be called on components
-        // pub fn free_token(&mut self) -> Bucket {
-        //     info!("My balance is: {} HelloToken. Now giving away a token!", self.sample_vault.amount());
-        //     // If the semi-colon is omitted on the last line, the last value seen is automatically returned
-        //     // In this case, a bucket containing 1 HelloToken is returned
-        //     self.sample_vault.take(1)
-        // }
     }
 }
