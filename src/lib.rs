@@ -254,7 +254,7 @@ mod plazapair {
             let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
         
             // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, target_value, lp_address) = if is_quote {
+            let (vault, mut target_value, lp_address) = if is_quote {
                 (&mut self.quote_vault, self.quote_target, self.quote_lp)
             } else {
                 (&mut self.base_vault, self.base_target, self.base_lp)
@@ -273,7 +273,8 @@ mod plazapair {
                 input_bucket.amount() / target_value * outstanding_lp
             };
         
-            // Add the input bucket into the target vault
+            // Add the new liquidity to the target and deposit into the vault
+            target_value += input_bucket.amount();
             vault.put(input_bucket);
         
             // Authorize the minting of new LP value and return the updated bucket
