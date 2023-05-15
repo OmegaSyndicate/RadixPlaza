@@ -133,7 +133,7 @@ mod plazapair {
                 }
             };
 
-            // Set reference price to B/Q or Q/B depending on liquidity
+            // Set reference price to B[Q] or Q[B] depending on liquidity
             let mut p_ref = match self.state {
                 PairState::BaseShortage => p0,
                 PairState::Equilibrium => if input_is_quote { p0 } else { dec!(1) / p0 },
@@ -151,17 +151,19 @@ mod plazapair {
             let mut output_amount = dec!(0);
             let mut exchange_state = self.state;
 
-            // Handle the incoming case
+            // Handle the incoming case (trading towards equilibrium)
             if exchange_state == input_shortage {
                 if amount_to_trade + input_actual >= input_target {
+                    // Trading past equilibrium
                     amount_to_trade -= input_target - input_actual;
                     output_amount = output_actual - output_target;
 
-                    // Update variables for outgoing part of trade
+                    // Update variables for second part of trade
                     exchange_state = PairState::Equilibrium;
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;
                 } else {
+                    // Trading towards but short of equilibrium
                     output_amount = self.calc_incoming(
                         amount_to_trade,
                         input_target,
@@ -171,7 +173,7 @@ mod plazapair {
                 }
             }
 
-            // Handle the equilibrium or input surplus case
+            // Handle the trading away from equilbrium case
             if exchange_state != input_shortage && amount_to_trade > dec!(0) {
                 output_amount += self.calc_outgoing(
                     amount_to_trade,
@@ -217,7 +219,7 @@ mod plazapair {
             // Adjust pair state variables.
             self.p0 = new_p0;
             self.state = new_state;
-            //debug!("p0: {} -- state {}", new_p0, new_state);
+            debug!("p0: {} -- state {}", new_p0, new_state);
 
             // Update the target values and select the input and output vaults based on input_tokens type.
             let (input_vault, output_vault) = if is_quote {
@@ -284,22 +286,22 @@ mod plazapair {
             let virtual_surplus = shortage_before * (dec!(1) + self.k_out * shortage_before / actual) * virtual_p_ref;
 
             // Calculate scaled surplus and input amount using p_ref
-            let surplus_after = (virtual_surplus + input_amount) / virtual_p_ref;
+            let scaled_surplus_after = (virtual_surplus + input_amount) / virtual_p_ref;
 
             // Check if the egress price curve exponent (k_out) is 1
             if self.k_out == dec!(1) {
                 // Calculate the shortage before and after the operation
-                let shortage_after = target * surplus_after / (target + surplus_after);
+                let shortage_after = target * scaled_surplus_after / (target + scaled_surplus_after);
 
                 // Calculate and return the difference in shortage
                 shortage_after - shortage_before
             } else {
                 // Handle other values for k_out
-                let shortage_after = target + surplus_after
+                let shortage_after = target + scaled_surplus_after
                     - Decimal::sqrt(
                         &(target * target
-                        + (dec!(4) * self.k_out - dec!(2)) * target * surplus_after
-                        + surplus_after * surplus_after)
+                        + (dec!(4) * self.k_out - dec!(2)) * target * scaled_surplus_after
+                        + scaled_surplus_after * scaled_surplus_after)
                     ).unwrap();
 
                 // Calculate and return the difference in shortage
