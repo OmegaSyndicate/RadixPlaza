@@ -13,3 +13,11 @@ fn swaps() {
     println!("{:?}\n", receipt);
     receipt.expect_commit_success();
 }
+
+#[test]
+fn accepts_new_liquidity() {
+    let (mut test_runner, account, key, pair, base_address, _quote_address) = utils::fixtures();
+    let receipt = utils::add_liquidity(&mut test_runner, base_address, dec!(1), pair, account, key);
+    println!("{:?}\n", receipt);
+    receipt.expect_commit_success();
+}

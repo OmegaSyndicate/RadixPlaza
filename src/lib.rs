@@ -246,6 +246,40 @@ mod plazapair {
             surplus / shortage / (dec!(1) + self.k_in * shortage / actual)
         }
 
+        pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
+            // Ensure the bucket is not empty
+            assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
+        
+            // Determine if the bucket is for the quote or the base pool
+            let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
+        
+            // Based on the bucket type, choose the correct vault, target and resource address
+            let (vault, target_value, lp_address) = if is_quote {
+                (&mut self.quote_vault, self.quote_target, self.quote_lp)
+            } else {
+                (&mut self.base_vault, self.base_target, self.base_lp)
+            };
+        
+            // Borrow the liquidity pool manager resource & check supply
+            let liquidity_pool_manager = borrow_resource_manager!(lp_address);
+            let outstanding_lp = liquidity_pool_manager.total_supply();
+        
+            // Calculate the new LP amount
+            let new_lp_value = if outstanding_lp == dec!(0) { 
+                // If the LP supply is zero, the new LP value is the input amount
+                input_bucket.amount()
+            } else {
+                // Otherwise, it's calculated based on the input amount, target and LP supply
+                input_bucket.amount() / target_value * outstanding_lp
+            };
+        
+            // Add the input bucket into the target vault
+            vault.put(input_bucket);
+        
+            // Authorize the minting of new LP value and return the updated bucket
+            self.lp_badge.authorize(|| liquidity_pool_manager.mint(new_lp_value))
+        }
+        
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
         fn calc_incoming(
             &self,

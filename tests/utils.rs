@@ -80,7 +80,7 @@ fn instantiate_pair(runner: &mut TestRunner, package: PackageAddress, base: Reso
 }
 
 pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, account: ComponentAddress, public_key: EcdsaSecp256k1PublicKey) -> TransactionReceipt {
-    // Test the swap function
+    // Call the swap method
     let manifest = ManifestBuilder::new()
         .call_method(
             account,
@@ -107,6 +107,36 @@ pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pa
     save_receipt_to_file("last_swap.txt", &receipt);
 
     receipt   
+}
+
+pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, account: ComponentAddress, public_key: EcdsaSecp256k1PublicKey) -> TransactionReceipt {
+    // Call the add liquidity method
+    let manifest = ManifestBuilder::new()
+        .call_method(
+            account,
+            "withdraw",
+            manifest_args!(input, amount)
+        )
+        .take_from_worktop(input, |builder, input_bucket| {
+            builder.call_method(
+                pair,
+                "add_liquidity",
+                manifest_args!(input_bucket)
+            )
+        })
+        .call_method(
+            account,
+            "deposit_batch",
+            manifest_args!(ManifestExpression::EntireWorktop),
+        )
+        .build();
+        let receipt = runner.execute_manifest_ignoring_fee(
+            manifest,
+            vec![NonFungibleGlobalId::from_public_key(&public_key)],
+        );
+        save_receipt_to_file("liquidity_add.txt", &receipt);
+    
+        receipt    
 }
 
 pub fn fixtures() -> (TestRunner, ComponentAddress, EcdsaSecp256k1PublicKey, ComponentAddress, ResourceAddress, ResourceAddress) {
