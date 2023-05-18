@@ -97,6 +97,76 @@ mod plazapair {
             (pair, base_lp_bucket, quote_lp_bucket)
         }
 
+        pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
+            // Ensure the bucket is not empty
+            assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
+        
+            // Determine if the bucket is for the quote or the base pool
+            let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
+        
+            // Based on the bucket type, choose the correct vault, target and resource address
+            let (vault, mut target_value, lp_address) = if is_quote {
+                (&mut self.quote_vault, self.quote_target, self.quote_lp)
+            } else {
+                (&mut self.base_vault, self.base_target, self.base_lp)
+            };
+        
+            // Borrow the liquidity pool manager resource & check supply
+            let liquidity_pool_manager = borrow_resource_manager!(lp_address);
+            let outstanding_lp = liquidity_pool_manager.total_supply();
+        
+            // Calculate the new LP amount
+            let new_lp_value = if outstanding_lp == dec!(0) { 
+                // If the LP supply is zero, the new LP value is the input amount
+                input_bucket.amount()
+            } else {
+                // Otherwise, it's calculated based on the input amount, target and LP supply
+                input_bucket.amount() / target_value * outstanding_lp
+            };
+        
+            // Add the new liquidity to the target and deposit into the vault
+            target_value += input_bucket.amount();
+            vault.put(input_bucket);
+        
+            // Authorize the minting of new LP value and return the updated bucket
+            self.lp_badge.authorize(|| liquidity_pool_manager.mint(new_lp_value))
+        }
+
+        /// Swap a bucket of tokens along the AMM curve.
+        pub fn swap(&mut self, input_tokens: Bucket) -> Bucket {
+            // Determine if the input tokens are quote tokens or base tokens.
+            let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
+
+            // Calculate the amount of output tokens and pair impact variables.
+            let (output_amount, fee, new_p0, new_state) = self.quote(input_tokens.amount(), is_quote);
+
+            // Log trade event
+            let (token_in, token_out) = if is_quote {
+                ("quote", "base")
+            } else {
+                ("base", "quote")
+            };
+            info!("SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
+
+            // Adjust pair state variables.
+            self.p0 = new_p0;
+            self.state = new_state;
+            debug!("p0: {} -- state {}", new_p0, new_state);
+
+            // Update the target values and select the input and output vaults based on input_tokens type.
+            let (input_vault, output_vault) = if is_quote {
+                self.base_target += fee;
+                (&mut self.quote_vault, &mut self.base_vault)
+            } else {
+                self.quote_target += fee;
+                (&mut self.base_vault, &mut self.quote_vault)
+            };
+
+            // Transfer the tokens.
+            input_vault.put(input_tokens);
+            output_vault.take(output_amount)
+        }
+        
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState) {
             // Collect current actual balances
@@ -200,41 +270,6 @@ mod plazapair {
             (output_amount - fee, fee, p0, exchange_state)
         }
 
-        /// Swap a bucket of tokens along the AMM curve.
-        pub fn swap(&mut self, input_tokens: Bucket) -> Bucket {
-            // Determine if the input tokens are quote tokens or base tokens.
-            let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
-
-            // Calculate the amount of output tokens and pair impact variables.
-            let (output_amount, fee, new_p0, new_state) = self.quote(input_tokens.amount(), is_quote);
-
-            // Log trade event
-            let (token_in, token_out) = if is_quote {
-                ("quote", "base")
-            } else {
-                ("base", "quote")
-            };
-            info!("SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
-
-            // Adjust pair state variables.
-            self.p0 = new_p0;
-            self.state = new_state;
-            debug!("p0: {} -- state {}", new_p0, new_state);
-
-            // Update the target values and select the input and output vaults based on input_tokens type.
-            let (input_vault, output_vault) = if is_quote {
-                self.base_target += fee;
-                (&mut self.quote_vault, &mut self.base_vault)
-            } else {
-                self.quote_target += fee;
-                (&mut self.base_vault, &mut self.quote_vault)
-            };
-
-            // Transfer the tokens.
-            input_vault.put(input_tokens);
-            output_vault.take(output_amount)
-        }
-
         // Calculate the price at equilibrium (p0) given surplus, target, and actual token amounts
         fn calc_p0(&self, surplus: Decimal, target: Decimal, actual: Decimal) -> Decimal {
             // TODO: ADD FILTER!!
@@ -244,41 +279,6 @@ mod plazapair {
 
             // Calculate the price at equilibrium (p0) using the given formula
             surplus / shortage / (dec!(1) + self.k_in * shortage / actual)
-        }
-
-        pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
-            // Ensure the bucket is not empty
-            assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
-        
-            // Determine if the bucket is for the quote or the base pool
-            let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
-        
-            // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, mut target_value, lp_address) = if is_quote {
-                (&mut self.quote_vault, self.quote_target, self.quote_lp)
-            } else {
-                (&mut self.base_vault, self.base_target, self.base_lp)
-            };
-        
-            // Borrow the liquidity pool manager resource & check supply
-            let liquidity_pool_manager = borrow_resource_manager!(lp_address);
-            let outstanding_lp = liquidity_pool_manager.total_supply();
-        
-            // Calculate the new LP amount
-            let new_lp_value = if outstanding_lp == dec!(0) { 
-                // If the LP supply is zero, the new LP value is the input amount
-                input_bucket.amount()
-            } else {
-                // Otherwise, it's calculated based on the input amount, target and LP supply
-                input_bucket.amount() / target_value * outstanding_lp
-            };
-        
-            // Add the new liquidity to the target and deposit into the vault
-            target_value += input_bucket.amount();
-            vault.put(input_bucket);
-        
-            // Authorize the minting of new LP value and return the updated bucket
-            self.lp_badge.authorize(|| liquidity_pool_manager.mint(new_lp_value))
         }
         
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
