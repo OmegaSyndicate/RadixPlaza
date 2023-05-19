@@ -85,7 +85,7 @@ mod plazapair {
                 quote_vault: Vault::with_bucket(initial_quote),
                 state: PairState::Equilibrium,
                 k_in: dec!("0.4"),
-                k_out: dec!("1.0"),
+                k_out: dec!("1"),
                 base_lp: base_lp_bucket.resource_address(),
                 quote_lp: quote_lp_bucket.resource_address(),
                 lp_badge: Vault::with_bucket(lp_badge),
@@ -295,11 +295,18 @@ mod plazapair {
 
             // Handle the trading away from equilbrium case
             if exchange_state != input_shortage && amount_to_trade > dec!(0) {
+                // Calibrate outgoing price curve to incoming at spot price.
+                let target2 = output_target * output_target;
+                let actual2 = output_actual * output_actual;
+                let num = actual2 + self.k_in * (target2 - actual2);
+                let den = actual2 + self.k_out * (target2 - actual2);
+                let virtual_p_ref = num / den * p_ref;
+    
                 output_amount += self.calc_outgoing(
                     amount_to_trade,
                     output_target,
                     output_actual,
-                    p_ref,
+                    virtual_p_ref,
                 );
                 exchange_state = match input_shortage {
                     PairState::QuoteShortage => PairState::BaseShortage,
@@ -361,17 +368,12 @@ mod plazapair {
             actual: Decimal,
             p_ref: Decimal,
         ) -> Decimal {
-            // Calibrate outgoing price curve to incoming at spot price.
+            // Calculate current shortage
             let shortage_before = target - actual;
-            let target2 = target * target;
-            let actual2 = actual * actual;
-            let num = actual2 + self.k_in * (target2 - actual2);
-            let den = actual2 + self.k_out * (target2 - actual2);
-            let virtual_p_ref = num / den * p_ref;
-            let virtual_surplus = shortage_before * (dec!(1) + self.k_out * shortage_before / actual) * virtual_p_ref;
 
-            // Calculate scaled surplus and input amount using p_ref
-            let scaled_surplus_after = (virtual_surplus + input_amount) / virtual_p_ref;
+            // Calculate scaled surplus and input amount using p_ref and trading curve
+            let scaled_surplus_before = shortage_before * (dec!(1) + self.k_out * shortage_before / actual) * p_ref;
+            let scaled_surplus_after = (scaled_surplus_before + input_amount) / p_ref;
 
             // Check if the egress price curve exponent (k_out) is 1
             if self.k_out == dec!(1) {
@@ -390,6 +392,7 @@ mod plazapair {
                     ).unwrap();
 
                 // Calculate and return the difference in shortage
+                // TODO: fix shortage_before scaling
                 (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.k_out)
             }
         }
