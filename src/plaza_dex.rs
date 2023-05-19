@@ -75,6 +75,24 @@ mod plazadex {
             }
         }
 
+        // Add liquidity to the exchange
+        pub fn add_liquidity(&mut self, tokens: Bucket, base_token: Option<ResourceAddress>) -> Bucket {
+            let input_token = tokens.resource_address();
+
+            if input_token == self.dfp2 {
+                // Verify base token is provided and listed
+                let base_token = base_token.expect("No base token provided");
+
+                // Find corresponding pair and add liquidity
+                let pair = self.token_to_pair.get_mut(&base_token).expect("Base token not listed");
+                pair.add_liquidity(tokens)
+            } else {
+                // Find corresponding pair and add liquidity
+                let pair = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
+                pair.add_liquidity(tokens)
+            }
+        }
+
         // Get a quote for swapping tokens
         pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
             // Verify tokens are all traded at the exchange

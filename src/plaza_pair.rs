@@ -132,6 +132,8 @@ mod plazapair {
         }
 
         // Exchange LP tokens for the underlying liquidity held in the pair
+        // TODO -- RESET TARGETS ON PRICE X-OVER
+        // TODO -- ENSURE HEALTH WITH ZERO LIQ
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             let lp_manager = borrow_resource_manager!(lp_tokens.resource_address());
             let lp_outstanding = lp_manager.total_supply();
