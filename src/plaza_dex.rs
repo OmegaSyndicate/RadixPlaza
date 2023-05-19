@@ -91,6 +91,13 @@ mod plazadex {
             }
         }
 
+        // Remove liquidity
+        pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
+            let rri = lp_tokens.resource_address();
+            let pair = self.token_to_pair.get_mut(&rri).expect("Unknown LP token");
+            pair.remove_liquidity(lp_tokens)
+        }
+
         // Get a quote for swapping tokens
         pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
             // Verify tokens are all traded at the exchange
