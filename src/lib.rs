@@ -112,16 +112,16 @@ mod plazapair {
             };
         
             // Borrow the liquidity pool manager resource & check supply
-            let liquidity_pool_manager = borrow_resource_manager!(lp_address);
-            let outstanding_lp = liquidity_pool_manager.total_supply();
+            let lp_manager = borrow_resource_manager!(lp_address);
+            let lp_outstanding = lp_manager.total_supply();
         
             // Calculate the new LP amount
-            let new_lp_value = if outstanding_lp == dec!(0) { 
+            let new_lp_value = if lp_outstanding == dec!(0) { 
                 // If the LP supply is zero, the new LP value is the input amount
                 input_bucket.amount()
             } else {
                 // Otherwise, it's calculated based on the input amount, target and LP supply
-                input_bucket.amount() / target_value * outstanding_lp
+                input_bucket.amount() / target_value * lp_outstanding
             };
         
             // Add the new liquidity to the target and deposit into the vault
@@ -129,7 +129,57 @@ mod plazapair {
             vault.put(input_bucket);
         
             // Authorize the minting of new LP value and return the updated bucket
-            self.lp_badge.authorize(|| liquidity_pool_manager.mint(new_lp_value))
+            self.lp_badge.authorize(|| lp_manager.mint(new_lp_value))
+        }
+
+        // Exchange LP tokens for the underlying liquidity held in the pair
+        pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
+            let lp_manager = borrow_resource_manager!(lp_tokens.resource_address());
+            let lp_outstanding = lp_manager.total_supply();
+            let is_quote = lp_tokens.resource_address() == self.quote_lp;
+
+            // Determine which vault and target values should be used
+            let (this_vault, other_vault, this_target, other_target, is_shortage) = if is_quote {
+                (
+                    &mut self.quote_vault,
+                    &mut self.base_vault,
+                    &mut self.quote_target,
+                    self.base_target,
+                    self.state == PairState::QuoteShortage,
+                )
+            } else {
+                (
+                    &mut self.base_vault,
+                    &mut self.quote_vault,
+                    &mut self.base_target,
+                    self.quote_target,
+                    self.state == PairState::BaseShortage,
+                )
+            };
+
+            // Calculate fraction of liquidity being withdrawn
+            let fraction = lp_tokens.amount() / lp_outstanding;
+
+            // Calculate how many tokens are represented by the withdrawn LP tokens
+            let (this_amount, other_amount) = if is_shortage {                
+                let surplus = other_vault.amount() - other_target;
+                (
+                    fraction * this_vault.amount(),
+                    fraction * surplus,
+                )
+            } else {
+                (
+                    fraction * *this_target,
+                    dec!(0),
+                )
+            };
+
+            // Burn the LP tokens and update the target value
+            self.lp_badge.authorize(|| { lp_tokens.burn(); });
+            *this_target -= fraction * *this_target;
+
+            // Take liquidity from the vault and return to the caller
+            (this_vault.take(this_amount), other_vault.take(other_amount))
         }
 
         /// Swap a bucket of tokens along the AMM curve.
@@ -166,7 +216,7 @@ mod plazapair {
             input_vault.put(input_tokens);
             output_vault.take(output_amount)
         }
-        
+
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState) {
             // Collect current actual balances
