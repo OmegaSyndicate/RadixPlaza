@@ -1,6 +1,5 @@
 use scrypto::prelude::*;
 use crate::plaza_pair::plazapair::*;
-//use std::collections::HashMap;
 
 #[blueprint]
 mod plazadex {
@@ -42,6 +41,33 @@ mod plazadex {
             self.lp_to_token.insert(lp_quote.resource_address(), rri);
 
             (lp_base, lp_quote)
+        }
+
+        pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
+            // Verify tokens are all traded at the exchange
+            assert!(input_token != output_token, "Can't swap token into itself");
+            assert!(self.token_to_pair.contains_key(&input_token) || input_token == self.dfp2, "Input token not listed");
+            assert!(self.token_to_pair.contains_key(&output_token) || output_token == self.dfp2, "Output token not listed");
+
+            match (input_token == self.dfp2, output_token == self.dfp2) {
+                (true, _) => {
+                    // Sell DFP2 from a single pair
+                    let pair = &self.token_to_pair[&output_token];
+                    pair.quote(input_amount, true).0
+                }
+                (_, true) => {
+                    // Buy DFP2 to a single pair
+                    let pair = &self.token_to_pair[&input_token];
+                    pair.quote(input_amount, false).0
+                }
+                _ => {
+                    // Trade using a hop through DFP2
+                    let pair1 = &self.token_to_pair[&input_token];
+                    let pair2 = &self.token_to_pair[&output_token];
+                    let dfp2_amount = pair1.quote(input_amount, false).0;
+                    pair2.quote(dfp2_amount, true).0
+                }
+            }            
         }
    }
 }
