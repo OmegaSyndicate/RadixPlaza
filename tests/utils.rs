@@ -41,8 +41,9 @@ fn save_receipt_to_file(filename: &str, receipt: &TransactionReceipt) {
 fn create_tokens(runner: &mut TestRunner, user: &User) -> TransactionReceipt {
     // Spawn some tokens
     let manifest = ManifestBuilder::new()
-        .new_token_fixed(BTreeMap::from([("symbol".to_string(), "BASE".to_string())]), dec!(10000))
-        .new_token_fixed(BTreeMap::from([("symbol".to_string(), "QUOTE".to_string())]), dec!(10000))
+        .new_token_fixed(BTreeMap::from([("symbol".to_string(), "DFP2".to_string())]), dec!(10000))
+        .new_token_fixed(BTreeMap::from([("symbol".to_string(), "BASE1".to_string())]), dec!(10000))
+        .new_token_fixed(BTreeMap::from([("symbol".to_string(), "BASE2".to_string())]), dec!(10000))
         .call_method(
             user.account,
             "deposit_batch",
@@ -58,7 +59,28 @@ fn create_tokens(runner: &mut TestRunner, user: &User) -> TransactionReceipt {
     receipt
 }
 
-fn instantiate_pair(runner: &mut TestRunner, package: PackageAddress, base: ResourceAddress, quote: ResourceAddress, user: &User) -> TransactionReceipt {
+#[allow(unused)]
+fn instantiate_dex(runner: &mut TestRunner, package: PackageAddress, dfp2: ResourceAddress, user: &User) -> TransactionReceipt {
+    // Test the pair instantiation
+    let manifest = ManifestBuilder::new()
+        .call_function(
+            package,
+            "PlazaDex",
+            "instantiate_dex",
+            manifest_args!(dfp2)
+        )
+        .build();
+    let receipt = runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
+    );
+    save_receipt_to_file("instantiate_dex.txt", &receipt);
+
+    receipt
+}
+
+#[allow(unused)]
+fn create_pair(runner: &mut TestRunner, dex: ComponentAddress, base: ResourceAddress, dfp2: ResourceAddress, p0: Decimal, user: &User) -> TransactionReceipt {
     // Test the pair instantiation
     let manifest = ManifestBuilder::new()
         .call_method(
@@ -69,15 +91,14 @@ fn instantiate_pair(runner: &mut TestRunner, package: PackageAddress, base: Reso
         .call_method(
             user.account,
             "withdraw",
-            manifest_args!(quote, dec!(2000))
+            manifest_args!(dfp2, dec!(1000))
         )
         .take_from_worktop(base, |builder, base_bucket| {
-            builder.take_from_worktop(quote, |builder, quote_bucket| {
-                builder.call_function(
-                    package,
-                    "PlazaPair",
-                    "instantiate_pair",
-                    manifest_args!(base_bucket, quote_bucket, dec!(10)),
+            builder.take_from_worktop(dfp2, |builder, dfp2_bucket| {
+                builder.call_method(
+                    dex,
+                    "create_pair",
+                    manifest_args!(base_bucket, dfp2_bucket, p0)
                 )
             })
         })
@@ -91,11 +112,12 @@ fn instantiate_pair(runner: &mut TestRunner, package: PackageAddress, base: Reso
         manifest,
         vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
     );
-    save_receipt_to_file("instantiate_pair.txt", &receipt);
+    save_receipt_to_file("create_pair.txt", &receipt);
 
     receipt
 }
 
+#[allow(unused)]
 pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
     // Call the swap method
     let manifest = ManifestBuilder::new()
@@ -126,6 +148,7 @@ pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pa
     receipt   
 }
 
+#[allow(unused)]
 pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
     // Call the add liquidity method
     let manifest = ManifestBuilder::new()
@@ -156,6 +179,7 @@ pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: De
         receipt    
 }
 
+#[allow(unused)]
 pub fn remove_liquidity(runner: &mut TestRunner, lp_address: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
     // Call the add liquidity method
     let manifest = ManifestBuilder::new()
@@ -205,7 +229,7 @@ pub fn remove_liquidity(runner: &mut TestRunner, lp_address: ResourceAddress, am
 //     receipt
 // }
 
-pub fn fixtures() -> (TestRunner, User, ComponentAddress, ResourceAddress, ResourceAddress) {
+pub fn fixtures() -> (TestRunner, User, ComponentAddress, Vec<ResourceAddress>) {
     // Setup the test environment
     let mut test_runner = TestRunner::builder().build();
 
@@ -214,18 +238,18 @@ pub fn fixtures() -> (TestRunner, User, ComponentAddress, ResourceAddress, Resou
 
     // Create a new account
     let user = make_user(&mut test_runner);
-    //let (public_key, _private_key, account) = test_runner.new_allocated_account();
 
     // Create some tokens
     let receipt = create_tokens(&mut test_runner, &user);
-    let base_address = receipt.expect_commit(true).new_resource_addresses()[0];
-    let quote_address = receipt.expect_commit(true).new_resource_addresses()[1];
+    let tokens = receipt.expect_commit(true).new_resource_addresses().to_vec();
 
-    // Instantiate pair
-    let receipt = instantiate_pair(&mut test_runner, package, base_address, quote_address, &user);
-    let _base_lp = receipt.expect_commit(true).new_resource_addresses()[0];
-    let _quote_lp = receipt.expect_commit(true).new_resource_addresses()[1];
-    let pair = receipt.expect_commit(true).new_component_addresses()[0];
+    // Instantiate dex
+    let receipt = instantiate_dex(&mut test_runner, package, tokens[0], &user);
+    let dex = receipt.expect_commit(true).new_component_addresses()[0];
 
-    (test_runner, user, pair, base_address, quote_address)
+    // Create pairs
+    let _receipt = create_pair(&mut test_runner, dex, tokens[1], tokens[0], dec!(1), &user);
+    let _receipt = create_pair(&mut test_runner, dex, tokens[2], tokens[0], dec!(1), &user);
+
+    (test_runner, user, dex, tokens)
 }

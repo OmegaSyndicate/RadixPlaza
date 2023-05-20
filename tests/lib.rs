@@ -3,7 +3,7 @@ mod utils;
 
 #[test]
 fn instantiates() {
-    let (_test_runner, _user, _pair, _base_address, _quote_address) = utils::fixtures();
+    let (_test_runner, _user, _dex, _tokens) = utils::fixtures();
 }
 
 // #[test]
