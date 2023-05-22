@@ -118,7 +118,7 @@ fn create_pair(runner: &mut TestRunner, dex: ComponentAddress, base: ResourceAdd
 }
 
 #[allow(unused)]
-pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
+pub fn swap(runner: &mut TestRunner, dex: ComponentAddress, input: ResourceAddress, amount: Decimal, output: ResourceAddress, user: &User) -> TransactionReceipt {
     // Call the swap method
     let manifest = ManifestBuilder::new()
         .call_method(
@@ -128,9 +128,9 @@ pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pa
         )
         .take_from_worktop(input, |builder, input_bucket| {
             builder.call_method(
-                pair,
+                dex,
                 "swap",
-                manifest_args!(input_bucket)
+                manifest_args!(input_bucket, output)
             )
         })
         .call_method(
@@ -149,7 +149,7 @@ pub fn swap(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pa
 }
 
 #[allow(unused)]
-pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
+pub fn add_liquidity(runner: &mut TestRunner, dex: ComponentAddress, input: ResourceAddress, amount: Decimal, base: Option<ResourceAddress>, user: &User) -> TransactionReceipt {
     // Call the add liquidity method
     let manifest = ManifestBuilder::new()
         .call_method(
@@ -159,9 +159,9 @@ pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: De
         )
         .take_from_worktop(input, |builder, bucket| {
             builder.call_method(
-                pair,
+                dex,
                 "add_liquidity",
-                manifest_args!(bucket)
+                manifest_args!(bucket, base)
             )
         })
         .call_method(
@@ -180,7 +180,7 @@ pub fn add_liquidity(runner: &mut TestRunner, input: ResourceAddress, amount: De
 }
 
 #[allow(unused)]
-pub fn remove_liquidity(runner: &mut TestRunner, lp_address: ResourceAddress, amount: Decimal, pair: ComponentAddress, user: &User) -> TransactionReceipt {
+pub fn remove_liquidity(runner: &mut TestRunner, dex: ComponentAddress, lp_address: ResourceAddress, amount: Decimal, user: &User) -> TransactionReceipt {
     // Call the add liquidity method
     let manifest = ManifestBuilder::new()
         .call_method(
@@ -190,7 +190,7 @@ pub fn remove_liquidity(runner: &mut TestRunner, lp_address: ResourceAddress, am
         )
         .take_from_worktop(lp_address, |builder, bucket| {
             builder.call_method(
-                pair,
+                dex,
                 "remove_liquidity",
                 manifest_args!(bucket)
             )
