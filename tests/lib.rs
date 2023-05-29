@@ -54,6 +54,15 @@ fn add_a_in_equilibrium() {
     receipt.expect_commit_success();
 }
 
+#[test]
+fn remove() {
+    let (mut test_runner, user, dex, tokens) = utils::fixtures();
+    let (base_lp, _quote_lp) = utils::get_lp_tokens(&mut test_runner, dex, tokens[1], &user);
+    let receipt = utils::remove_liquidity(&mut test_runner, dex, base_lp, dec!(1), &user);
+    println!("{:?}\n", receipt);
+    receipt.expect_commit_success();
+}
+
 
 
 // #[test]

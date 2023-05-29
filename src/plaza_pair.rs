@@ -218,6 +218,11 @@ mod plazapair {
             output_vault.take(output_amount)
         }
 
+        // Getter function to identify related LP tokens
+        pub fn get_lp_tokens(&self) -> (ResourceAddress, ResourceAddress) {
+            (self.base_lp, self.quote_lp)
+        }
+
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState) {
             // Collect current actual balances

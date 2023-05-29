@@ -170,14 +170,33 @@ pub fn add_liquidity(runner: &mut TestRunner, dex: ComponentAddress, input: Reso
             manifest_args!(ManifestExpression::EntireWorktop),
         )
         .build();
-        let receipt = runner.execute_manifest_ignoring_fee(
-            manifest,
-            vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
-        );
-        save_receipt_to_file("liquidity_add.txt", &receipt);
+    let receipt = runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
+    );
+    save_receipt_to_file("liquidity_add.txt", &receipt);
     
-        receipt    
+    receipt    
 }
+
+pub fn get_lp_tokens(runner: &mut TestRunner, dex: ComponentAddress, base_token: ResourceAddress, user: &User) -> (ResourceAddress, ResourceAddress) {
+    let manifest = ManifestBuilder::new()
+        .call_method(
+            dex,
+            "get_lp_tokens",
+            manifest_args!(base_token)
+        )
+        .build();
+    let receipt = runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
+    );
+    //save_receipt_to_file("get_lp_tokens.txt", &receipt);
+    let result = receipt.expect_commit_success();
+
+    result.output(1)
+}
+
 
 #[allow(unused)]
 pub fn remove_liquidity(runner: &mut TestRunner, dex: ComponentAddress, lp_address: ResourceAddress, amount: Decimal, user: &User) -> TransactionReceipt {
@@ -200,14 +219,14 @@ pub fn remove_liquidity(runner: &mut TestRunner, dex: ComponentAddress, lp_addre
             "deposit_batch",
             manifest_args!(ManifestExpression::EntireWorktop),
         )
-        .build();
-        let receipt = runner.execute_manifest_ignoring_fee(
-            manifest,
-            vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
-        );
-        save_receipt_to_file("liquidity_remove.txt", &receipt);
-    
-        receipt    
+        .build();        
+    let receipt = runner.execute_manifest_ignoring_fee(
+        manifest,
+        vec![NonFungibleGlobalId::from_public_key(&user.public_key)],
+    );
+    save_receipt_to_file("liquidity_remove.txt", &receipt);
+
+    receipt    
 }
 
 // #[allow(unused)]

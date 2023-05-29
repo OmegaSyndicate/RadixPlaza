@@ -93,8 +93,9 @@ mod plazadex {
 
         // Remove liquidity
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
-            let rri = lp_tokens.resource_address();
-            let pair = self.token_to_pair.get_mut(&rri).expect("Unknown LP token");
+            let lp_address = lp_tokens.resource_address();
+            let base_address = self.lp_to_token.get(&lp_address).expect("Unknown LP token");
+            let pair = self.token_to_pair.get_mut(&base_address).expect("Pair not found");
             pair.remove_liquidity(lp_tokens)
         }
 
@@ -123,5 +124,10 @@ mod plazadex {
                 }
             }            
         }
+
+        pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
+            let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
+            pair.get_lp_tokens()
+        } 
    }
 }
