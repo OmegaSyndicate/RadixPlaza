@@ -45,6 +45,8 @@ mod plazapair {
         lp_badge: Vault,
         // Trading fee
         fee: Decimal,
+        // Timestamp of last trade
+        last_trade: i64,
     }
 
     impl PlazaPair {
@@ -90,6 +92,7 @@ mod plazapair {
                 quote_lp: quote_lp_bucket.resource_address(),
                 lp_badge: Vault::with_bucket(lp_badge),
                 fee: dec!("0.003"),
+                last_trade: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
             }
             .instantiate();
 
@@ -189,7 +192,7 @@ mod plazapair {
             let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
 
             // Calculate the amount of output tokens and pair impact variables.
-            let (output_amount, fee, new_p0, new_state) = self.quote(input_tokens.amount(), is_quote);
+            let (output_amount, fee, new_p0, new_state, t) = self.quote(input_tokens.amount(), is_quote);
 
             // Log trade event
             let (token_in, token_out) = if is_quote {
@@ -202,6 +205,7 @@ mod plazapair {
             // Adjust pair state variables.
             self.p0 = new_p0;
             self.state = new_state;
+            self.last_trade = t;
             debug!("p0: {} -- state {}", new_p0, new_state);
 
             // Update the target values and select the input and output vaults based on input_tokens type.
@@ -224,7 +228,10 @@ mod plazapair {
         }
 
         // Get a quote from the AMM for trading tokens on the pair
-        pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState) {
+        pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState, i64) {
+            // Check current time
+            let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
+
             // Collect current actual balances
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
 
@@ -330,7 +337,7 @@ mod plazapair {
             // Apply trading fee
             let fee = self.fee * output_amount;
 
-            (output_amount - fee, fee, p0, exchange_state)
+            (output_amount - fee, fee, p0, exchange_state, t)
         }
 
         // Calculate the price at equilibrium (p0) given surplus, target, and actual token amounts
