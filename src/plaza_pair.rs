@@ -229,8 +229,16 @@ mod plazapair {
 
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState, i64) {
-            // Check current time
+            // Compute time since previous trade
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
+            let delta_t = if t > self.last_trade { 
+                t - self.last_trade
+            } else { 
+                0
+            };
+
+            // Compute decay factor with a 15 minute time constant
+            let factor = Decimal::powi(&dec!("0.9355"), delta_t / 60);
 
             // Collect current actual balances
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
@@ -254,7 +262,7 @@ mod plazapair {
                 };            
 
             // Calculate the base[quote] price in equilibrium
-            let p0 = match self.state {
+            let new_p0 = match self.state {
                 PairState::BaseShortage => {
                     let quote_surplus = quote_actual - self.quote_target;
                     self.calc_p0(quote_surplus, self.base_target, base_actual)
@@ -265,6 +273,7 @@ mod plazapair {
                     dec!(1) / self.calc_p0(base_surplus, self.quote_target, quote_actual)
                 }
             };
+            let p0 = factor * new_p0 + (dec!(1) - factor) * self.p0;
 
             // Set reference price to B[Q] or Q[B] depending on liquidity
             let mut p_ref = match self.state {
