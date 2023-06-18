@@ -7,6 +7,29 @@ pub enum PairState {
     QuoteShortage,
 }
 
+#[derive(ScryptoSbor)]
+pub struct PairParams {
+    p0: Decimal,
+    // Target amount of base tokens
+    base_target: Decimal,
+    // Target amount of quote tokens
+    quote_target: Decimal,
+    // Current state of the pair
+    state: PairState,
+    // Ingress price curve exponent
+    k_in: Decimal,
+    // Egress price curve exponent
+    k_out: Decimal,
+    // Trading fee
+    fee: Decimal,
+    // Timestamp of last trade
+    last_trade: i64,
+    // Timestamp of last trade
+    last_outgoing: i64,
+    // Timestamp of last trade
+    last_out_spot: Decimal,
+}
+
 impl fmt::Display for PairState {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
@@ -47,6 +70,10 @@ mod plazapair {
         fee: Decimal,
         // Timestamp of last trade
         last_trade: i64,
+        // Timestamp of last trade
+        last_outgoing: i64,
+        // Timestamp of last trade
+        last_out_spot: Decimal,
     }
 
     impl PlazaPair {
@@ -93,6 +120,8 @@ mod plazapair {
                 lp_badge: Vault::with_bucket(lp_badge),
                 fee: dec!("0.003"),
                 last_trade: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
+                last_outgoing: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
+                last_out_spot: price,
             }
             .instantiate();
 
@@ -320,16 +349,20 @@ mod plazapair {
                 // Calibrate outgoing price curve to incoming at spot price.
                 let target2 = output_target * output_target;
                 let actual2 = output_actual * output_actual;
-                let num = actual2 + self.k_in * (target2 - actual2);
+                let num_new = (dec!(1) - factor) * (actual2 + self.k_in * (target2 - actual2));
+                let num_old = factor * actual2 * self.last_out_spot;
                 let den = actual2 + self.k_out * (target2 - actual2);
-                let virtual_p_ref = num / den * p_ref;
-    
+                let virtual_p_ref = (num_new + num_old) / den * p_ref;
+                
+                // Calculate output amount based on outgoing curve
                 output_amount += self.calc_outgoing(
                     amount_to_trade,
                     output_target,
                     output_actual,
                     virtual_p_ref,
                 );
+
+                // Select what the new exchange state should be
                 exchange_state = match input_shortage {
                     PairState::QuoteShortage => PairState::BaseShortage,
                     PairState::BaseShortage => PairState::QuoteShortage,
