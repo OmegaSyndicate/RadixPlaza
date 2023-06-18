@@ -7,27 +7,18 @@ pub enum PairState {
     QuoteShortage,
 }
 
-#[derive(ScryptoSbor)]
+#[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairParams {
-    p0: Decimal,
-    // Target amount of base tokens
-    base_target: Decimal,
-    // Target amount of quote tokens
-    quote_target: Decimal,
-    // Current state of the pair
-    state: PairState,
-    // Ingress price curve exponent
-    k_in: Decimal,
-    // Egress price curve exponent
-    k_out: Decimal,
-    // Trading fee
-    fee: Decimal,
-    // Timestamp of last trade
-    last_trade: i64,
-    // Timestamp of last trade
-    last_outgoing: i64,
-    // Timestamp of last trade
-    last_out_spot: Decimal,
+    p0: Decimal,                // Equilibrium price
+    base_target: Decimal,       // Target amount of base tokens
+    quote_target: Decimal,      // Target amount of quote tokens
+    state: PairState,           // Current state of the pair
+    k_in: Decimal,              // Ingress price curve exponent
+    k_out: Decimal,             // Egress price curve exponent
+    fee: Decimal,               // Trading fee
+    last_trade: i64,            // Timestamp of last trade
+    last_outgoing: i64,         // Timestamp of last outgoing trade
+    last_out_spot: Decimal,     // Last outgoing spot price
 }
 
 impl fmt::Display for PairState {
@@ -43,37 +34,13 @@ impl fmt::Display for PairState {
 #[blueprint]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
-    struct PlazaPair {
-        // Price at equilibrium
-        p0: Decimal,
-        // Target amount of base tokens
-        base_target: Decimal,
-        // Target amount of quote tokens
-        quote_target: Decimal,
-        // Vault holding base tokens
-        base_vault: Vault,
-        // Vault holding quote tokens
-        quote_vault: Vault,
-        // Current state of the pair
-        state: PairState,
-        // Ingress price curve exponent
-        k_in: Decimal,
-        // Egress price curve exponent
-        k_out: Decimal,
-        // Resource address of base LP tokens
-        base_lp: ResourceAddress,
-        // Resource address of quote LP tokens
-        quote_lp: ResourceAddress,
-        // Vault holding admin badge
-        lp_badge: Vault,
-        // Trading fee
-        fee: Decimal,
-        // Timestamp of last trade
-        last_trade: i64,
-        // Timestamp of last trade
-        last_outgoing: i64,
-        // Timestamp of last trade
-        last_out_spot: Decimal,
+    struct PlazaPair { 
+        params: PairParams,                 // Pool parameters
+        base_vault: Vault,                  // Holds the base tokens
+        quote_vault: Vault,                 // Holds the quote tokens
+        base_lp: ResourceAddress,           // Resource address of base LP tokens
+        quote_lp: ResourceAddress,          // Resource address of quote LP tokens
+        lp_badge: Vault,                    // Vault holding admin badge
     }
 
     impl PlazaPair {
@@ -107,21 +74,23 @@ mod plazapair {
 
             // Instantiate a PlazaPair component
             let pair = Self {
-                p0: price,
-                base_target: initial_base.amount(),
-                quote_target: initial_quote.amount(),
+                params: PairParams {
+                    p0: price,
+                    base_target: initial_base.amount(),
+                    quote_target: initial_quote.amount(),
+                    state: PairState::Equilibrium,
+                    k_in: dec!("0.4"),
+                    k_out: dec!("1"),
+                    fee: dec!("0.003"),
+                    last_trade: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
+                    last_outgoing: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
+                    last_out_spot: price,
+                },
                 base_vault: Vault::with_bucket(initial_base),
                 quote_vault: Vault::with_bucket(initial_quote),
-                state: PairState::Equilibrium,
-                k_in: dec!("0.4"),
-                k_out: dec!("1"),
                 base_lp: base_lp_bucket.resource_address(),
                 quote_lp: quote_lp_bucket.resource_address(),
                 lp_badge: Vault::with_bucket(lp_badge),
-                fee: dec!("0.003"),
-                last_trade: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
-                last_outgoing: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
-                last_out_spot: price,
             }
             .instantiate();
 
@@ -137,9 +106,9 @@ mod plazapair {
         
             // Based on the bucket type, choose the correct vault, target and resource address
             let (vault, mut target_value, lp_address) = if is_quote {
-                (&mut self.quote_vault, self.quote_target, self.quote_lp)
+                (&mut self.quote_vault, self.params.quote_target, self.quote_lp)
             } else {
-                (&mut self.base_vault, self.base_target, self.base_lp)
+                (&mut self.base_vault, self.params.base_target, self.base_lp)
             };
         
             // Borrow the liquidity pool manager resource & check supply
@@ -176,17 +145,17 @@ mod plazapair {
                 (
                     &mut self.quote_vault,
                     &mut self.base_vault,
-                    &mut self.quote_target,
-                    self.base_target,
-                    self.state == PairState::QuoteShortage,
+                    &mut self.params.quote_target,
+                    self.params.base_target,
+                    self.params.state == PairState::QuoteShortage,
                 )
             } else {
                 (
                     &mut self.base_vault,
                     &mut self.quote_vault,
-                    &mut self.base_target,
-                    self.quote_target,
-                    self.state == PairState::BaseShortage,
+                    &mut self.params.base_target,
+                    self.params.quote_target,
+                    self.params.state == PairState::BaseShortage,
                 )
             };
 
@@ -221,7 +190,7 @@ mod plazapair {
             let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
 
             // Calculate the amount of output tokens and pair impact variables.
-            let (output_amount, fee, new_p0, new_state, t) = self.quote(input_tokens.amount(), is_quote);
+            let (output_amount, fee, mut new_params) = self.quote(input_tokens.amount(), is_quote);
 
             // Log trade event
             let (token_in, token_out) = if is_quote {
@@ -231,20 +200,19 @@ mod plazapair {
             };
             info!("SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
 
-            // Adjust pair state variables.
-            self.p0 = new_p0;
-            self.state = new_state;
-            self.last_trade = t;
-            debug!("p0: {} -- state {}", new_p0, new_state);
-
+            // TODO: fee sharing
             // Update the target values and select the input and output vaults based on input_tokens type.
             let (input_vault, output_vault) = if is_quote {
-                self.base_target += fee;
+                new_params.base_target += fee;
                 (&mut self.quote_vault, &mut self.base_vault)
             } else {
-                self.quote_target += fee;
+                new_params.quote_target += fee;
                 (&mut self.base_vault, &mut self.quote_vault)
             };
+
+            // Adjust pair state variables.
+            self.params = new_params;
+            debug!("p0: {} -- state {}", new_params.p0, new_params.state);
 
             // Transfer the tokens.
             input_vault.put(input_tokens);
@@ -257,14 +225,17 @@ mod plazapair {
         }
 
         // Get a quote from the AMM for trading tokens on the pair
-        pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, Decimal, PairState, i64) {
+        pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, PairParams) {
+            let mut new_params = self.params;
+
             // Compute time since previous trade
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-            let delta_t = if t > self.last_trade { 
-                t - self.last_trade
+            let delta_t = if t > self.params.last_trade { 
+                t - self.params.last_trade
             } else { 
                 0
             };
+            new_params.last_trade = t;
 
             // Compute decay factor with a 15 minute time constant
             let factor = Decimal::powi(&dec!("0.9355"), delta_t / 60);
@@ -278,34 +249,35 @@ mod plazapair {
                     (
                         quote_actual,
                         base_actual,
-                        self.quote_target,
-                        self.base_target,
+                        self.params.quote_target,
+                        self.params.base_target,
                     )
                 } else {
                     (
                         base_actual,
                         quote_actual,
-                        self.base_target,
-                        self.quote_target,
+                        self.params.base_target,
+                        self.params.quote_target,
                     )
                 };            
 
             // Calculate the base[quote] price in equilibrium
-            let new_p0 = match self.state {
+            let new_p0 = match self.params.state {
                 PairState::BaseShortage => {
-                    let quote_surplus = quote_actual - self.quote_target;
-                    self.calc_p0(quote_surplus, self.base_target, base_actual)
+                    let quote_surplus = quote_actual - self.params.quote_target;
+                    self.calc_p0(quote_surplus, self.params.base_target, base_actual)
                 }
-                PairState::Equilibrium => self.p0,
+                PairState::Equilibrium => self.params.p0,
                 PairState::QuoteShortage => {
-                    let base_surplus = base_actual - self.base_target;
-                    dec!(1) / self.calc_p0(base_surplus, self.quote_target, quote_actual)
+                    let base_surplus = base_actual - self.params.base_target;
+                    dec!(1) / self.calc_p0(base_surplus, self.params.quote_target, quote_actual)
                 }
             };
-            let p0 = factor * new_p0 + (dec!(1) - factor) * self.p0;
+            let p0 = factor * new_p0 + (dec!(1) - factor) * self.params.p0;
+            new_params.p0 = p0;
 
             // Set reference price to B[Q] or Q[B] depending on liquidity
-            let mut p_ref = match self.state {
+            let mut p_ref = match self.params.state {
                 PairState::BaseShortage => p0,
                 PairState::Equilibrium => if input_is_quote { p0 } else { dec!(1) / p0 },
                 PairState::QuoteShortage => dec!(1) / p0
@@ -320,17 +292,16 @@ mod plazapair {
             // Define running counters
             let mut amount_to_trade = input_amount;
             let mut output_amount = dec!(0);
-            let mut exchange_state = self.state;
 
             // Handle the incoming case (trading towards equilibrium)
-            if exchange_state == input_shortage {
+            if new_params.state == input_shortage {
                 if amount_to_trade + input_actual >= input_target {
                     // Trading past equilibrium
                     amount_to_trade -= input_target - input_actual;
                     output_amount = output_actual - output_target;
 
                     // Update variables for second part of trade
-                    exchange_state = PairState::Equilibrium;
+                    new_params.state = PairState::Equilibrium;
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;
                 } else {
@@ -345,25 +316,26 @@ mod plazapair {
             }
 
             // Handle the trading away from equilbrium case
-            if exchange_state != input_shortage && amount_to_trade > dec!(0) {
+            if new_params.state != input_shortage && amount_to_trade > dec!(0) {
                 // Calibrate outgoing price curve to incoming at spot price.
                 let target2 = output_target * output_target;
                 let actual2 = output_actual * output_actual;
-                let num_new = (dec!(1) - factor) * (actual2 + self.k_in * (target2 - actual2));
-                let num_old = factor * actual2 * self.last_out_spot;
-                let den = actual2 + self.k_out * (target2 - actual2);
+                let num_new = (dec!(1) - factor) * (actual2 + self.params.k_in * (target2 - actual2));
+                let num_old = factor * actual2 * self.params.last_out_spot;
+                let den = actual2 + self.params.k_out * (target2 - actual2);
                 let virtual_p_ref = (num_new + num_old) / den * p_ref;
                 
                 // Calculate output amount based on outgoing curve
-                output_amount += self.calc_outgoing(
+                let outgoing_output = self.calc_outgoing(
                     amount_to_trade,
                     output_target,
                     output_actual,
                     virtual_p_ref,
                 );
+                output_amount += outgoing_output;
 
                 // Select what the new exchange state should be
-                exchange_state = match input_shortage {
+                new_params.state = match input_shortage {
                     PairState::QuoteShortage => PairState::BaseShortage,
                     PairState::BaseShortage => PairState::QuoteShortage,
                     PairState::Equilibrium => {
@@ -373,24 +345,34 @@ mod plazapair {
                             PairState::QuoteShortage
                         }
                     }
-                }
+                };
+
+                // Store previous outgoing time stamp
+                new_params.last_outgoing = t;
+
+                // Calculate and store previous outgoing spot price
+                let new_actual = output_actual - outgoing_output;
+                let new_actual2 = new_actual * new_actual;
+                new_params.last_out_spot = match new_params.state {
+                    PairState::BaseShortage => (dec!(1) + new_params.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref,
+                    PairState::Equilibrium => new_params.p0,
+                    PairState::QuoteShortage => dec!(1) / (dec!(1) + new_params.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref, 
+                };
             }
 
             // Apply trading fee
-            let fee = self.fee * output_amount;
+            let fee = self.params.fee * output_amount;
 
-            (output_amount - fee, fee, p0, exchange_state, t)
+            (output_amount - fee, fee, new_params)
         }
 
         // Calculate the price at equilibrium (p0) given surplus, target, and actual token amounts
         fn calc_p0(&self, surplus: Decimal, target: Decimal, actual: Decimal) -> Decimal {
-            // TODO: ADD FILTER!!
-
             // Calculate the shortage of tokens
             let shortage = target - actual;
 
             // Calculate the price at equilibrium (p0) using the given formula
-            surplus / shortage / (dec!(1) + self.k_in * shortage / actual)
+            surplus / shortage / (dec!(1) + self.params.k_in * shortage / actual)
         }
         
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
@@ -427,11 +409,11 @@ mod plazapair {
             let shortage_before = target - actual;
 
             // Calculate scaled surplus and input amount using p_ref and trading curve
-            let scaled_surplus_before = shortage_before * (dec!(1) + self.k_out * shortage_before / actual) * p_ref;
+            let scaled_surplus_before = shortage_before * (dec!(1) + self.params.k_out * shortage_before / actual) * p_ref;
             let scaled_surplus_after = (scaled_surplus_before + input_amount) / p_ref;
 
             // Check if the egress price curve exponent (k_out) is 1
-            if self.k_out == dec!(1) {
+            if self.params.k_out == dec!(1) {
                 // Calculate the shortage before and after the operation
                 let shortage_after = target * scaled_surplus_after / (target + scaled_surplus_after);
 
@@ -442,13 +424,13 @@ mod plazapair {
                 let shortage_after = target + scaled_surplus_after
                     - Decimal::sqrt(
                         &(target * target
-                        + (dec!(4) * self.k_out - dec!(2)) * target * scaled_surplus_after
+                        + (dec!(4) * self.params.k_out - dec!(2)) * target * scaled_surplus_after
                         + scaled_surplus_after * scaled_surplus_after)
                     ).unwrap();
 
                 // Calculate and return the difference in shortage
                 // TODO: fix shortage_before scaling
-                (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.k_out)
+                (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.params.k_out)
             }
         }
     }
