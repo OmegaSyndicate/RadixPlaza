@@ -38,41 +38,60 @@ mod plazapair {
         params: PairParams,                 // Pool parameters
         base_vault: Vault,                  // Holds the base tokens
         quote_vault: Vault,                 // Holds the quote tokens
-        base_lp: ResourceAddress,           // Resource address of base LP tokens
-        quote_lp: ResourceAddress,          // Resource address of quote LP tokens
-        lp_badge: Vault,                    // Vault holding admin badge
+        base_lp: ResourceManager,           // Resource address of base LP tokens
+        quote_lp: ResourceManager,          // Resource address of quote LP tokens
     }
 
     impl PlazaPair {
-        // Constructor to instantiate and deploy a new pair
+        // Instantiate a new Plaza style trading pair
         pub fn instantiate_pair(
             initial_base: Bucket,
             initial_quote: Bucket,
             price: Decimal,
-        ) -> (PlazaPairComponent, Bucket, Bucket) {
-            // Create internal admin badge
-            let lp_badge: Bucket = ResourceBuilder::new_fungible()
-                .metadata("name", "admin badge")
-                .divisibility(DIVISIBILITY_NONE)
-                .mint_initial_supply(1);
+        ) -> (Global<PlazaPair>, Bucket, Bucket) {
+            let (address_reservation, component_address) =
+                Runtime::allocate_component_address(Runtime::blueprint_id());
 
             // Create LP tokens for the base token providers, starting at 1:1
-            let base_lp_bucket: Bucket = ResourceBuilder::new_fungible()
-                .metadata("name", "PlazaPair Base LP")
-                .metadata("symbol", "PLAZALP")
-                .mintable(rule!(require(lp_badge.resource_address())), LOCKED)
-                .burnable(rule!(require(lp_badge.resource_address())), LOCKED)
-                .mint_initial_supply(initial_base.amount());
+            let base_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
+                .metadata(metadata! {
+                    init {
+                        "name" => "PlazaPair Base LP", locked;
+                        "symbol" => "PLAZALP", locked;
+                    }
+                })
+                .mint_roles(mint_roles! {
+                    minter => rule!(require(global_caller(component_address))); 
+                    minter_updater => rule!(deny_all);
+                })
+                .burn_roles(burn_roles! {
+                    burner => rule!(require(global_caller(component_address)));
+                    burner_updater => rule!(deny_all);
+                })
+                .create_with_no_initial_supply();
+            let base_lp_bucket = base_lp.mint(initial_base.amount());
 
             // Create LP tokens for the quote token providers, starting at 1:1
-            let quote_lp_bucket: Bucket = ResourceBuilder::new_fungible()
-                .metadata("name", "PlazaPair Quote LP")
-                .metadata("symbol", "PLAZALP")
-                .mintable(rule!(require(lp_badge.resource_address())), LOCKED)
-                .burnable(rule!(require(lp_badge.resource_address())), LOCKED)
-                .mint_initial_supply(initial_quote.amount());
+            let quote_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
+                .metadata(metadata! {
+                    init {
+                        "name" => "PlazaPair Quote LP", locked;
+                        "symbol" => "PLAZALP", locked;
+                    }
+                })
+                .mint_roles(mint_roles! {
+                    minter => rule!(require(global_caller(component_address))); 
+                    minter_updater => rule!(deny_all);
+                })
+                .burn_roles(burn_roles! {
+                    burner => rule!(require(global_caller(component_address)));
+                    burner_updater => rule!(deny_all);
+                })
+                .create_with_no_initial_supply();
+            let quote_lp_bucket = quote_lp.mint(initial_quote.amount());
 
             // Instantiate a PlazaPair component
+            let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             let pair = Self {
                 params: PairParams {
                     p0: price,
@@ -82,21 +101,24 @@ mod plazapair {
                     k_in: dec!("0.4"),
                     k_out: dec!("1"),
                     fee: dec!("0.003"),
-                    last_trade: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
-                    last_outgoing: Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch,
+                    last_trade: now,
+                    last_outgoing: now,
                     last_out_spot: price,
                 },
                 base_vault: Vault::with_bucket(initial_base),
                 quote_vault: Vault::with_bucket(initial_quote),
-                base_lp: base_lp_bucket.resource_address(),
-                quote_lp: quote_lp_bucket.resource_address(),
-                lp_badge: Vault::with_bucket(lp_badge),
+                base_lp: base_lp,
+                quote_lp: quote_lp,
             }
-            .instantiate();
+            .instantiate()
+            .prepare_to_globalize(OwnerRole::None)
+            .with_address(address_reservation)
+            .globalize();
 
             (pair, base_lp_bucket, quote_lp_bucket)
         }
 
+        // Add liquidity to the pool in return for LP tokens
         pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
             // Ensure the bucket is not empty
             assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
@@ -105,15 +127,14 @@ mod plazapair {
             let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
         
             // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, mut target_value, lp_address) = if is_quote {
+            let (vault, mut target_value, lp_manager) = if is_quote {
                 (&mut self.quote_vault, self.params.quote_target, self.quote_lp)
             } else {
                 (&mut self.base_vault, self.params.base_target, self.base_lp)
             };
         
-            // Borrow the liquidity pool manager resource & check supply
-            let lp_manager = borrow_resource_manager!(lp_address);
-            let lp_outstanding = lp_manager.total_supply();
+            // Check amount of outstanding LP tokens
+            let lp_outstanding = lp_manager.total_supply().unwrap();
         
             // Calculate the new LP amount
             let new_lp_value = if lp_outstanding == dec!(0) { 
@@ -127,27 +148,26 @@ mod plazapair {
             // Add the new liquidity to the target and deposit into the vault
             target_value += input_bucket.amount();
             vault.put(input_bucket);
-        
-            // Authorize the minting of new LP value and return the updated bucket
-            self.lp_badge.authorize(|| lp_manager.mint(new_lp_value))
+
+            // Mint the new LP tokens and return to the caller
+            lp_manager.mint(new_lp_value)
         }
 
         // Exchange LP tokens for the underlying liquidity held in the pair
         // TODO -- RESET TARGETS ON PRICE X-OVER
         // TODO -- ENSURE HEALTH WITH ZERO LIQ
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
-            let lp_manager = borrow_resource_manager!(lp_tokens.resource_address());
-            let lp_outstanding = lp_manager.total_supply();
-            let is_quote = lp_tokens.resource_address() == self.quote_lp;
+            let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
 
             // Determine which vault and target values should be used
-            let (this_vault, other_vault, this_target, other_target, is_shortage) = if is_quote {
+            let (this_vault, other_vault, this_target, other_target, is_shortage, lp_manager) = if is_quote {
                 (
                     &mut self.quote_vault,
                     &mut self.base_vault,
                     &mut self.params.quote_target,
                     self.params.base_target,
                     self.params.state == PairState::QuoteShortage,
+                    self.quote_lp,
                 )
             } else {
                 (
@@ -156,10 +176,12 @@ mod plazapair {
                     &mut self.params.base_target,
                     self.params.quote_target,
                     self.params.state == PairState::BaseShortage,
+                    self.base_lp,
                 )
             };
 
             // Calculate fraction of liquidity being withdrawn
+            let lp_outstanding = lp_manager.total_supply().unwrap();
             let fraction = lp_tokens.amount() / lp_outstanding;
 
             // Calculate how many tokens are represented by the withdrawn LP tokens
@@ -177,7 +199,7 @@ mod plazapair {
             };
 
             // Burn the LP tokens and update the target value
-            self.lp_badge.authorize(|| { lp_tokens.burn(); });
+            lp_tokens.burn();
             *this_target -= fraction * *this_target;
 
             // Take liquidity from the vault and return to the caller
@@ -220,7 +242,7 @@ mod plazapair {
         }
 
         // Getter function to identify related LP tokens
-        pub fn get_lp_tokens(&self) -> (ResourceAddress, ResourceAddress) {
+        pub fn get_lp_tokens(&self) -> (ResourceManager, ResourceManager) {
             (self.base_lp, self.quote_lp)
         }
 
@@ -374,7 +396,7 @@ mod plazapair {
             // Calculate the price at equilibrium (p0) using the given formula
             surplus / shortage / (dec!(1) + self.params.k_in * shortage / actual)
         }
-        
+
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
         fn calc_incoming(
             &self,
