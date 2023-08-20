@@ -45,10 +45,10 @@ mod plazapair {
     impl PlazaPair {
         // Instantiate a new Plaza style trading pair
         pub fn instantiate_pair(
-            initial_base: Bucket,
-            initial_quote: Bucket,
-            price: Decimal,
-        ) -> (Global<PlazaPair>, Bucket, Bucket) {
+            base_token: ResourceManager,
+            quote_token: ResourceManager,
+            initial_price: Decimal,
+        ) -> Global<PlazaPair> {
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Runtime::blueprint_id());
 
@@ -69,7 +69,6 @@ mod plazapair {
                     burner_updater => rule!(deny_all);
                 })
                 .create_with_no_initial_supply();
-            let base_lp_bucket = base_lp.mint(initial_base.amount());
 
             // Create LP tokens for the quote token providers, starting at 1:1
             let quote_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
@@ -88,34 +87,31 @@ mod plazapair {
                     burner_updater => rule!(deny_all);
                 })
                 .create_with_no_initial_supply();
-            let quote_lp_bucket = quote_lp.mint(initial_quote.amount());
 
             // Instantiate a PlazaPair component
             let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-            let pair = Self {
+            Self {
                 params: PairParams {
-                    p0: price,
-                    base_target: initial_base.amount(),
-                    quote_target: initial_quote.amount(),
+                    p0: initial_price,
+                    base_target: dec!(0),
+                    quote_target: dec!(0),
                     state: PairState::Equilibrium,
                     k_in: dec!("0.4"),
                     k_out: dec!("1"),
                     fee: dec!("0.003"),
                     last_trade: now,
                     last_outgoing: now,
-                    last_out_spot: price,
+                    last_out_spot: initial_price,
                 },
-                base_vault: Vault::with_bucket(initial_base),
-                quote_vault: Vault::with_bucket(initial_quote),
+                base_vault: Vault::new(base_token.address()),
+                quote_vault: Vault::new(quote_token.address()),
                 base_lp: base_lp,
                 quote_lp: quote_lp,
             }
             .instantiate()
             .prepare_to_globalize(OwnerRole::None)
             .with_address(address_reservation)
-            .globalize();
-
-            (pair, base_lp_bucket, quote_lp_bucket)
+            .globalize()
         }
 
         // Add liquidity to the pool in return for LP tokens
