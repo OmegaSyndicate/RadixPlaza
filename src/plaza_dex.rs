@@ -1,5 +1,5 @@
 use scrypto::prelude::*;
-use crate::plaza_pair::plazapair::*;
+use crate::plaza_pair::plazapair::PlazaPair;
 
 #[blueprint]
 mod plazadex {
@@ -7,42 +7,53 @@ mod plazadex {
     struct PlazaDex {
         // Pair location for certain token / lp_token
         dfp2: ResourceAddress,
-        token_to_pair: HashMap<ResourceAddress, PlazaPairComponent>,
+        token_to_pair: HashMap<ResourceAddress, Global<PlazaPair>>,
         lp_to_token: HashMap<ResourceAddress, ResourceAddress>,
+        dfp2_reserves: HashMap<ResourceAddress, Vault>,
+        min_dfp2_liquidity: Decimal,
     }
 
     impl PlazaDex {
         // Constructor to instantiate and deploy a new pair
-        pub fn instantiate_dex(dfp2_address: ResourceAddress) -> ComponentAddress {
+        pub fn instantiate_dex(dfp2_address: ResourceAddress) -> Global<PlazaDex> {
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
                 token_to_pair: HashMap::new(),
                 lp_to_token: HashMap::new(),
+                dfp2_reserves: HashMap::new(),
+                min_dfp2_liquidity: dec!(0),
             }
             .instantiate()
+            .prepare_to_globalize(OwnerRole::None)
             .globalize()
         }
 
         // Create a new liquidity pair on the exchange
-        pub fn create_pair(&mut self, tokens: Bucket, dfp2: Bucket, p0: Decimal) -> (Bucket, Bucket) {
-            // Verify dfp2 tokens are indeed dfp2 tokens
+        pub fn create_pair(&mut self, token: ResourceAddress, dfp2: Bucket, p0: Decimal) -> Global<PlazaPair> {
+            // Ensure all basic criteria are met to add a new pair
             assert!(dfp2.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
+            assert!(dfp2.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
+            assert!(self.token_to_pair.contains_key(&token) == false, "Pair already exists");
+            assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
-            // Ensure the pair doesn't exist yet
-            let rri = tokens.resource_address();
-            assert!(self.token_to_pair.contains_key(&rri) == false, "Pair already exists");
-            assert!(rri != self.dfp2, "Can't add DFP2 as base token");
-            
-            // Create new pair
-            let (pair, lp_base, lp_quote) = PlazaPairComponent::instantiate_pair(tokens, dfp2, p0);
+            // Instantiate new pair
+            let pair = PlazaPair::instantiate_pair(token, self.dfp2, p0);
+            let (lp_base, lp_quote) = pair.get_lp_tokens();
 
             // Add new pair to database
-            self.token_to_pair.insert(rri, pair);
-            self.lp_to_token.insert(lp_base.resource_address(), rri);
-            self.lp_to_token.insert(lp_quote.resource_address(), rri);
+            self.token_to_pair.insert(token, pair);
+            self.lp_to_token.insert(lp_base, token);
+            self.lp_to_token.insert(lp_quote, token);
 
-            (lp_base, lp_quote)
+            if dfp2.amount() > dec!(0) {
+                let lp_tokens = pair.add_liquidity(dfp2);
+                let dfp2_vault = Vault::with_bucket(lp_tokens);
+                // TODO: locking mechanism
+                self.dfp2_reserves.insert(token, dfp2_vault);
+            }
+
+            pair
         }
 
         // Swap tokens

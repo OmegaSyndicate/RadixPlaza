@@ -45,13 +45,15 @@ mod plazapair {
     impl PlazaPair {
         // Instantiate a new Plaza style trading pair
         pub fn instantiate_pair(
-            base_token: ResourceManager,
-            quote_token: ResourceManager,
+            base_token: ResourceAddress,
+            quote_token: ResourceAddress,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
             // Ensure both tokens are fungible
-            assert!(base_token.resource_type().is_fungible(), "non-fungible base token detected");
-            assert!(quote_token.resource_type().is_fungible(), "non-fungible quote token detected");
+            let base_manager = ResourceManager::from(base_token);
+            let quote_manager = ResourceManager::from(quote_token);
+            assert!(base_manager.resource_type().is_fungible(), "non-fungible base token detected");
+            assert!(quote_manager.resource_type().is_fungible(), "non-fungible quote token detected");
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
@@ -108,8 +110,8 @@ mod plazapair {
                     last_outgoing: now,
                     last_out_spot: initial_price,
                 },
-                base_vault: Vault::new(base_token.address()),
-                quote_vault: Vault::new(quote_token.address()),
+                base_vault: Vault::new(base_token),
+                quote_vault: Vault::new(quote_token),
                 base_lp: base_lp,
                 quote_lp: quote_lp,
             }
@@ -246,8 +248,8 @@ mod plazapair {
         }
 
         // Getter function to identify related LP tokens
-        pub fn get_lp_tokens(&self) -> (ResourceManager, ResourceManager) {
-            (self.base_lp, self.quote_lp)
+        pub fn get_lp_tokens(&self) -> (ResourceAddress, ResourceAddress) {
+            (self.base_lp.address(), self.quote_lp.address())
         }
 
         // Get a quote from the AMM for trading tokens on the pair
