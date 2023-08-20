@@ -49,6 +49,11 @@ mod plazapair {
             quote_token: ResourceManager,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
+            // Ensure both tokens are fungible
+            assert!(base_token.resource_type().is_fungible(), "non-fungible base token detected");
+            assert!(quote_token.resource_type().is_fungible(), "non-fungible quote token detected");
+
+            // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Runtime::blueprint_id());
 
