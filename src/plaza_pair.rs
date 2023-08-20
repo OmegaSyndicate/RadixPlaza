@@ -158,9 +158,11 @@ mod plazapair {
         // TODO -- RESET TARGETS ON PRICE X-OVER
         // TODO -- ENSURE HEALTH WITH ZERO LIQ
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
-            let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
+            // Ensure the bucket isn't empty
+            assert!(lp_tokens.amount() > dec!(0), "Empty bucket provided");
 
             // Determine which vault and target values should be used
+            let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
             let (this_vault, other_vault, this_target, other_target, is_shortage, lp_manager) = if is_quote {
                 (
                     &mut self.quote_vault,
@@ -209,10 +211,11 @@ mod plazapair {
 
         /// Swap a bucket of tokens along the AMM curve.
         pub fn swap(&mut self, input_tokens: Bucket) -> Bucket {
-            // Determine if the input tokens are quote tokens or base tokens.
-            let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
+            // Ensure the input bucket isn't empty
+            assert!(input_tokens.amount() > dec!(0), "Empty input bucket");
 
             // Calculate the amount of output tokens and pair impact variables.
+            let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
             let (output_amount, fee, mut new_params) = self.quote(input_tokens.amount(), is_quote);
 
             // Log trade event
