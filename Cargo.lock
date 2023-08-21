@@ -215,9 +215,11 @@ name = "defiplaza"
 version = "0.1.0"
 dependencies = [
  "radix-engine",
+ "radix-engine-interface",
  "sbor",
  "scrypto",
  "scrypto-unit",
+ "test-engine",
  "transaction",
 ]
 
@@ -1167,6 +1169,18 @@ dependencies = [
  "redox_syscall",
  "rustix",
  "windows-sys",
+]
+
+[[package]]
+name = "test-engine"
+version = "0.0.1"
+source = "git+https://github.com/BeakerFi/scrypto-toolkit?branch=main#36d5af639b593cfec195723f6a9425cfea9b97d0"
+dependencies = [
+ "radix-engine",
+ "radix-engine-interface",
+ "radix-engine-stores",
+ "scrypto-unit",
+ "transaction",
 ]
 
 [[package]]
