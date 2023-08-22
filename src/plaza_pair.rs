@@ -64,7 +64,7 @@ mod plazapair {
                 .metadata(metadata! {
                     init {
                         "name" => "PlazaPair Base LP", locked;
-                        "symbol" => "PLAZALP", locked;
+                        "symbol" => "BASELP", locked;
                     }
                 })
                 .mint_roles(mint_roles! {
@@ -82,7 +82,7 @@ mod plazapair {
                 .metadata(metadata! {
                     init {
                         "name" => "PlazaPair Quote LP", locked;
-                        "symbol" => "PLAZALP", locked;
+                        "symbol" => "QUOTELP", locked;
                     }
                 })
                 .mint_roles(mint_roles! {
@@ -130,10 +130,10 @@ mod plazapair {
             let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
         
             // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, mut target_value, lp_manager) = if is_quote {
-                (&mut self.quote_vault, self.params.quote_target, self.quote_lp)
+            let (vault, target_value, lp_manager) = if is_quote {
+                (&mut self.quote_vault, &mut self.params.quote_target, self.quote_lp)
             } else {
-                (&mut self.base_vault, self.params.base_target, self.base_lp)
+                (&mut self.base_vault, &mut self.params.base_target, self.base_lp)
             };
         
             // Check amount of outstanding LP tokens
@@ -145,14 +145,14 @@ mod plazapair {
                 input_bucket.amount()
             } else {
                 // Otherwise, it's calculated based on the input amount, target and LP supply
-                input_bucket.amount() / target_value * lp_outstanding
+                input_bucket.amount() / *target_value * lp_outstanding
             };
         
-            // Add the new liquidity to the target and deposit into the vault
-            target_value += input_bucket.amount();
+            // Update target field and take in liquidity
+            *target_value += input_bucket.amount();
             vault.put(input_bucket);
 
-            // Mint the new LP tokens and return to the caller
+            // Mint the new LP tokens
             lp_manager.mint(new_lp_value)
         }
 

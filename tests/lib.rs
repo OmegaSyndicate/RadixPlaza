@@ -1,7 +1,7 @@
 mod plazapair_tests {
-    use std::fs::File;
     use std::io::Write;
-    use std::fs::create_dir_all;
+    use std::fs::{File, create_dir_all};
+    use scrypto::prelude::*;
     use radix_engine::types::dec;
     use radix_engine::transaction::TransactionReceipt;
     use radix_engine_interface::blueprints::resource::OwnerRole;
@@ -46,17 +46,36 @@ mod plazapair_tests {
     #[test]
     fn test_add_first_base_liquidity() {
         let mut test_engine = initialize();
-        let receipt = test_engine.call_method(
+        test_engine.call_method(
             "add_liquidity",
             env_args!(
                 Environment::FungibleBucket("astrl", dec!(1000))
             ),
         ).assert_is_success();
-        // println!("{}", receipt.get_return());
-        // save_receipt_to_file("add_first.txt", &receipt);
+        let lp_amount = test_engine.current_balance("BASELP");
         let astrl_amount = test_engine.current_balance("astrl");
         let dfp2_amount = test_engine.current_balance("dfp2");
+        assert_eq!(lp_amount, dec!(1000));
         assert_eq!(astrl_amount, dec!(999_000));
+        assert_eq!(dfp2_amount, dec!(1_000_000));
+    }
+
+    #[test]
+    fn test_add_second_base_liquidity() {
+        let mut test_engine = initialize();
+        for _ in 0..2 {
+            test_engine.call_method(
+                "add_liquidity",
+                env_args!(
+                    Environment::FungibleBucket("astrl", dec!(1000))
+                ),
+            ).assert_is_success();
+        }
+        let lp_amount = test_engine.current_balance("BASELP");
+        let astrl_amount = test_engine.current_balance("astrl");
+        let dfp2_amount = test_engine.current_balance("dfp2");
+        assert_eq!(lp_amount, dec!(2000));
+        assert_eq!(astrl_amount, dec!(998_000));
         assert_eq!(dfp2_amount, dec!(1_000_000));
     }
 }
