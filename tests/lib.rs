@@ -27,17 +27,34 @@ mod plazapair_tests {
 
     fn initialize() -> TestEngine {
         let mut test_engine = TestEngine::new();
-        test_engine.new_token("astrl", dec!(1_000_000));
-        test_engine.new_token("dfp2", dec!(1_000_000));
+        test_engine.new_token("base", dec!(1_000_000));
+        test_engine.new_token("quote", dec!(1_000_000));
         test_engine.new_package("defiplaza package", "./");
         test_engine.new_component(
             "plazapair",
             "PlazaPair",
             "instantiate_pair",
             env_args!(
-                Environment::Resource("astrl"),
-                Environment::Resource("dfp2"),
+                Environment::Resource("base"),
+                Environment::Resource("quote"),
                 dec!(1)
+            ),
+        );
+        test_engine
+    }
+
+    fn init_funded() -> TestEngine {
+        let mut test_engine = initialize();
+        test_engine.call_method(
+            "add_liquidity",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(1000))
+            ),
+        );
+        test_engine.call_method(
+            "add_liquidity",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(1000))
             ),
         );
         test_engine
@@ -49,15 +66,15 @@ mod plazapair_tests {
         test_engine.call_method(
             "add_liquidity",
             env_args!(
-                Environment::FungibleBucket("astrl", dec!(1000))
+                Environment::FungibleBucket("base", dec!(1000))
             ),
         ).assert_is_success();
         let lp_amount = test_engine.current_balance("BASELP");
-        let astrl_amount = test_engine.current_balance("astrl");
-        let dfp2_amount = test_engine.current_balance("dfp2");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
         assert_eq!(lp_amount, dec!(1000));
-        assert_eq!(astrl_amount, dec!(999_000));
-        assert_eq!(dfp2_amount, dec!(1_000_000));
+        assert_eq!(base_amount, dec!(999_000));
+        assert_eq!(quote_amount, dec!(1_000_000));
     }
 
     #[test]
@@ -67,16 +84,86 @@ mod plazapair_tests {
             test_engine.call_method(
                 "add_liquidity",
                 env_args!(
-                    Environment::FungibleBucket("astrl", dec!(1000))
+                    Environment::FungibleBucket("base", dec!(1000))
                 ),
             ).assert_is_success();
         }
         let lp_amount = test_engine.current_balance("BASELP");
-        let astrl_amount = test_engine.current_balance("astrl");
-        let dfp2_amount = test_engine.current_balance("dfp2");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
         assert_eq!(lp_amount, dec!(2000));
-        assert_eq!(astrl_amount, dec!(998_000));
-        assert_eq!(dfp2_amount, dec!(1_000_000));
+        assert_eq!(base_amount, dec!(998_000));
+        assert_eq!(quote_amount, dec!(1_000_000));
+    }
+
+    #[test]
+    fn test_add_first_quote_liquidity() {
+        let mut test_engine = initialize();
+        test_engine.call_method(
+            "add_liquidity",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(1000))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("QUOTELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(1000));
+        assert_eq!(base_amount, dec!(1_000_000));
+        assert_eq!(quote_amount, dec!(999_000));
+    }
+
+    #[test]
+    fn test_add_second_quote_liquidity() {
+        let mut test_engine = initialize();
+        for _ in 0..2 {
+            test_engine.call_method(
+                "add_liquidity",
+                env_args!(
+                    Environment::FungibleBucket("quote", dec!(1000))
+                ),
+            ).assert_is_success();
+        }
+        let lp_amount = test_engine.current_balance("QUOTELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(2000));
+        assert_eq!(base_amount, dec!(1_000_000));
+        assert_eq!(quote_amount, dec!(998_000));
+    }
+
+    #[test]
+    fn test_remove_base_liquidity() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("BASELP", dec!(500))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("BASELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(500));
+        assert_eq!(base_amount, dec!(999_500));
+        assert_eq!(quote_amount, dec!(999_000));
+    }
+
+    #[test]
+    fn test_remove_quote_liquidity() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("QUOTELP", dec!(500))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("QUOTELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(500));
+        assert_eq!(base_amount, dec!(999_000));
+        assert_eq!(quote_amount, dec!(999_500));
     }
 }
 
@@ -90,7 +177,7 @@ mod plazapair_tests {
 // }
 
 // #[test]
-// fn swap_a_to_dfp2() {
+// fn swap_a_to_quote() {
 //     let (mut test_runner, user, dex, tokens) = utils::fixtures();
 //     let receipt = utils::swap(&mut test_runner, dex, tokens[1], dec!(1), tokens[0], &user);
 //     println!("{:?}\n", receipt);
@@ -98,7 +185,7 @@ mod plazapair_tests {
 // }
 
 // #[test]
-// fn swap_dfp2_to_a() {
+// fn swap_quote_to_a() {
 //     let (mut test_runner, user, dex, tokens) = utils::fixtures();
 //     let receipt = utils::swap(&mut test_runner, dex, tokens[0], dec!(1), tokens[1], &user);
 //     println!("{:?}\n", receipt);
@@ -122,7 +209,7 @@ mod plazapair_tests {
 // }
 
 // #[test]
-// fn add_dfp2_in_equilibrium() {
+// fn add_quote_in_equilibrium() {
 //     let (mut test_runner, user, dex, tokens) = utils::fixtures();
 //     let receipt = utils::add_liquidity(&mut test_runner, dex, tokens[0], dec!(1), Some(tokens[1]), &user);
 //     println!("{:?}\n", receipt);
