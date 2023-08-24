@@ -37,7 +37,7 @@ mod plazapair_tests {
             env_args!(
                 Environment::Resource("base"),
                 Environment::Resource("quote"),
-                dec!(1)
+                dec!(2)
             ),
         );
         test_engine
@@ -164,6 +164,95 @@ mod plazapair_tests {
         assert_eq!(lp_amount, dec!(500));
         assert_eq!(base_amount, dec!(999_000));
         assert_eq!(quote_amount, dec!(999_500));
+    }
+
+    #[test]
+    fn test_remove_all_base_liquidity() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("BASELP", dec!(1000))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("BASELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(000));
+        assert_eq!(base_amount, dec!(1_000_000));
+        assert_eq!(quote_amount, dec!(999_000));
+    }
+
+    #[test]
+    fn test_remove_all_quote_liquidity() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("QUOTELP", dec!(1000))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("QUOTELP");
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(lp_amount, dec!(000));
+        assert_eq!(base_amount, dec!(999_000));
+        assert_eq!(quote_amount, dec!(1_000_000));
+    }
+
+    #[test]
+    fn test_remove_all_liquidity() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("BASELP", dec!(1000))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("BASELP");
+        assert_eq!(lp_amount, dec!(000));
+        test_engine.call_method(
+            "remove_liquidity",
+            env_args!(
+                Environment::FungibleBucket("QUOTELP", dec!(1000))
+            ),
+        ).assert_is_success();
+        let lp_amount = test_engine.current_balance("QUOTELP");
+        assert_eq!(lp_amount, dec!(000));
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(base_amount, dec!(1_000_000));
+        assert_eq!(quote_amount, dec!(1_000_000));
+    }
+
+    #[test]
+    fn test_swap_quote_to_base() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(2000))
+            ),
+        ).assert_is_success();
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(base_amount, dec!("999498.5"));
+        assert_eq!(quote_amount, dec!(997_000));
+    }
+
+    #[test]
+    fn test_swap_base_to_quote() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(500))
+            ),
+        ).assert_is_success();
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        assert_eq!(base_amount, dec!(998_500));
+        assert_eq!(quote_amount, dec!("999498.5"));
     }
 }
 

@@ -13,12 +13,16 @@ pub struct PairParams {
     base_target: Decimal,       // Target amount of base tokens
     quote_target: Decimal,      // Target amount of quote tokens
     state: PairState,           // Current state of the pair
-    k_in: Decimal,              // Ingress price curve exponent
-    k_out: Decimal,             // Egress price curve exponent
-    fee: Decimal,               // Trading fee
     last_trade: i64,            // Timestamp of last trade
     last_outgoing: i64,         // Timestamp of last outgoing trade
     last_out_spot: Decimal,     // Last outgoing spot price
+}
+
+#[derive(ScryptoSbor)]
+pub struct PairConfig {
+    k_in: Decimal,              // Ingress price curve exponent
+    k_out: Decimal,             // Egress price curve exponent
+    fee: Decimal,               // Trading fee
 }
 
 impl fmt::Display for PairState {
@@ -34,7 +38,8 @@ impl fmt::Display for PairState {
 #[blueprint]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
-    struct PlazaPair { 
+    struct PlazaPair {
+        config: PairConfig,                 // Pool configuration
         params: PairParams,                 // Pool parameters
         base_vault: Vault,                  // Holds the base tokens
         quote_vault: Vault,                 // Holds the quote tokens
@@ -98,14 +103,16 @@ mod plazapair {
             // Instantiate a PlazaPair component
             let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             Self {
+                config: PairConfig {
+                    k_in: dec!("0.4"),
+                    k_out: dec!("1"),
+                    fee: dec!("0.003"),
+                },
                 params: PairParams {
                     p0: initial_price,
                     base_target: dec!(0),
                     quote_target: dec!(0),
                     state: PairState::Equilibrium,
-                    k_in: dec!("0.4"),
-                    k_out: dec!("1"),
-                    fee: dec!("0.003"),
                     last_trade: now,
                     last_outgoing: now,
                     last_out_spot: initial_price,
@@ -301,7 +308,7 @@ mod plazapair {
                     dec!(1) / self.calc_p0(base_surplus, self.params.quote_target, quote_actual)
                 }
             };
-            let p0 = factor * new_p0 + (dec!(1) - factor) * self.params.p0;
+            let p0 = factor * self.params.p0 + (dec!(1) - factor) * new_p0;
             new_params.p0 = p0;
 
             // Set reference price to B[Q] or Q[B] depending on liquidity
@@ -348,9 +355,9 @@ mod plazapair {
                 // Calibrate outgoing price curve to incoming at spot price.
                 let target2 = output_target * output_target;
                 let actual2 = output_actual * output_actual;
-                let num_new = (dec!(1) - factor) * (actual2 + self.params.k_in * (target2 - actual2));
+                let num_new = (dec!(1) - factor) * (actual2 + self.config.k_in * (target2 - actual2));
                 let num_old = factor * actual2 * self.params.last_out_spot;
-                let den = actual2 + self.params.k_out * (target2 - actual2);
+                let den = actual2 + self.config.k_out * (target2 - actual2);
                 let virtual_p_ref = (num_new + num_old) / den * p_ref;
                 
                 // Calculate output amount based on outgoing curve
@@ -382,14 +389,14 @@ mod plazapair {
                 let new_actual = output_actual - outgoing_output;
                 let new_actual2 = new_actual * new_actual;
                 new_params.last_out_spot = match new_params.state {
-                    PairState::BaseShortage => (dec!(1) + new_params.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref,
+                    PairState::BaseShortage => (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref,
                     PairState::Equilibrium => new_params.p0,
-                    PairState::QuoteShortage => dec!(1) / (dec!(1) + new_params.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref, 
+                    PairState::QuoteShortage => dec!(1) / (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref, 
                 };
             }
 
             // Apply trading fee
-            let fee = self.params.fee * output_amount;
+            let fee = self.config.fee * output_amount;
 
             (output_amount - fee, fee, new_params)
         }
@@ -400,7 +407,7 @@ mod plazapair {
             let shortage = target - actual;
 
             // Calculate the price at equilibrium (p0) using the given formula
-            surplus / shortage / (dec!(1) + self.params.k_in * shortage / actual)
+            surplus / shortage / (dec!(1) + self.config.k_in * shortage / actual)
         }
 
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
@@ -437,11 +444,11 @@ mod plazapair {
             let shortage_before = target - actual;
 
             // Calculate scaled surplus and input amount using p_ref and trading curve
-            let scaled_surplus_before = shortage_before * (dec!(1) + self.params.k_out * shortage_before / actual) * p_ref;
+            let scaled_surplus_before = shortage_before * (dec!(1) + self.config.k_out * shortage_before / actual) * p_ref;
             let scaled_surplus_after = (scaled_surplus_before + input_amount) / p_ref;
 
             // Check if the egress price curve exponent (k_out) is 1
-            if self.params.k_out == dec!(1) {
+            if self.config.k_out == dec!(1) {
                 // Calculate the shortage before and after the operation
                 let shortage_after = target * scaled_surplus_after / (target + scaled_surplus_after);
 
@@ -452,13 +459,13 @@ mod plazapair {
                 let shortage_after = target + scaled_surplus_after
                     - Decimal::sqrt(
                         &(target * target
-                        + (dec!(4) * self.params.k_out - dec!(2)) * target * scaled_surplus_after
+                        + (dec!(4) * self.config.k_out - dec!(2)) * target * scaled_surplus_after
                         + scaled_surplus_after * scaled_surplus_after)
                     ).unwrap();
 
                 // Calculate and return the difference in shortage
                 // TODO: fix shortage_before scaling
-                (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.params.k_out)
+                (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.config.k_out)
             }
         }
     }
