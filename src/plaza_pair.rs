@@ -169,6 +169,11 @@ mod plazapair {
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             // Ensure the bucket isn't empty
             assert!(lp_tokens.amount() > dec!(0), "Empty bucket provided");
+            assert!(
+                lp_tokens.resource_address() == self.quote_lp.address() ||
+                    lp_tokens.resource_address() == self.base_lp.address(), 
+                "Invalid LP tokens"
+            );
 
             // Determine which vault and target values should be used
             let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
