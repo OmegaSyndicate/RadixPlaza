@@ -228,12 +228,13 @@ mod plazapair_tests {
     #[test]
     fn test_swap_quote_to_base() {
         let mut test_engine = init_funded();
-        test_engine.call_method(
+        let receipt = test_engine.call_method(
             "swap",
             env_args!(
                 Environment::FungibleBucket("quote", dec!(2000))
             ),
         ).assert_is_success();
+        save_receipt_to_file("swap_outgoing.txt", &receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         assert_eq!(base_amount, dec!("999498.5"));

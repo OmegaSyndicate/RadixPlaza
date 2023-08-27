@@ -238,7 +238,7 @@ mod plazapair {
             } else {
                 ("base", "quote")
             };
-            info!("SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
+            info!("  SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
 
             // TODO: fee sharing
             // Update the target values and select the input and output vaults based on input_tokens type.
@@ -252,7 +252,7 @@ mod plazapair {
 
             // Adjust pair state variables.
             self.state = new_state;
-            debug!("p0: {} -- state {}", new_state.p0, new_state.shortage);
+            debug!("  p0: {} -- state {}", new_state.p0, new_state.shortage);
 
             // Transfer the tokens.
             input_vault.put(input_tokens);
@@ -276,9 +276,11 @@ mod plazapair {
                 0
             };
             new_state.last_trade = t;
+            debug!("  delta_t: {} -- last_trade {}", delta_t, self.state.last_trade);
 
             // Compute decay factor with a 15 minute time constant
             let factor = Decimal::powi(&dec!("0.9355"), delta_t / 60);
+            debug!("  old-new p0 skew factor {}", factor);
 
             // Collect current actual balances
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
@@ -322,12 +324,14 @@ mod plazapair {
                 Shortage::Equilibrium => if input_is_quote { p0 } else { dec!(1) / p0 },
                 Shortage::QuoteShortage => dec!(1) / p0
             };
+            debug!("  p_ref used: {}", p_ref);
 
             // Determine which state represents input shortage based on input type
             let input_shortage = match input_is_quote {
                 true => Shortage::QuoteShortage,
                 false => Shortage::BaseShortage
             };
+            debug!("  Input shortage indicated as {}", input_shortage);
 
             // Define running counters
             let mut amount_to_trade = input_amount;
@@ -335,7 +339,9 @@ mod plazapair {
 
             // Handle the incoming case (trading towards equilibrium)
             if new_state.shortage == input_shortage {
+                debug!("  Input shortage detected.");
                 if amount_to_trade + input_actual >= input_target {
+                    debug!("  Trading past equilibrium.");
                     // Trading past equilibrium
                     amount_to_trade -= input_target - input_actual;
                     output_amount = output_actual - output_target;
@@ -345,6 +351,7 @@ mod plazapair {
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;
                 } else {
+                    debug!("  Trading towards equilibrium (incoming curve).");
                     // Trading towards but short of equilibrium
                     output_amount = self.calc_incoming(
                         amount_to_trade,
@@ -357,14 +364,21 @@ mod plazapair {
 
             // Handle the trading away from equilbrium case
             if new_state.shortage != input_shortage && amount_to_trade > dec!(0) {
+                debug!("  Trade on outgoing curve");
                 // Calibrate outgoing price curve to incoming at spot price.
+                let last_out_spot = match input_is_quote {
+                    true => self.state.last_out_spot,
+                    false => dec!(1) / self.state.last_out_spot,
+                };
                 let target2 = output_target * output_target;
                 let actual2 = output_actual * output_actual;
-                let num_new = (dec!(1) - factor) * (actual2 + self.config.k_in * (target2 - actual2));
-                let num_old = factor * actual2 * self.state.last_out_spot;
+                let num_new = (dec!(1) - factor) * (actual2 + self.config.k_in * (target2 - actual2)) * p_ref;
+                let num_old = factor * actual2 * last_out_spot;
                 let den = actual2 + self.config.k_out * (target2 - actual2);
-                let virtual_p_ref = (num_new + num_old) / den * p_ref;
-                
+                let virtual_p_ref = (num_new + num_old) / den;
+                debug!("  Skew factor: {}, last_spot: {}", factor, self.state.last_out_spot);                
+                debug!("  num_new: {}, num_old: {}, den: {}, p_ref: {}", num_new, num_old, den, p_ref);                
+                debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_actual, output_target, virtual_p_ref);
                 // Calculate output amount based on outgoing curve
                 let outgoing_output = self.calc_outgoing(
                     amount_to_trade,
