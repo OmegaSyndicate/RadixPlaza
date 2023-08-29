@@ -313,10 +313,56 @@ mod plazapair_tests {
         let receipt = test_engine.call_method(
             "swap",
             env_args!(
-                Environment::FungibleBucket("quote", dec!(500))
+                Environment::FungibleBucket("quote", dec!(150))
             ),
         ).assert_is_success();
         save_receipt_to_file("swap_incoming.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Definitely not a favorable trade to make  
+        assert_eq!(base_amount, dec!("998849.761995963453922185"));
+        assert_eq!(quote_amount, dec!("999182.333333333333333334"));
+    }
+
+    #[test]
+    fn test_swap_quote_to_base_and_back() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(500))
+            ),
+        ).assert_is_success();
+        let receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(75))
+            ),
+        ).assert_is_success();
+        save_receipt_to_file("swap_incoming.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Definitely not a favorable trade to make  
+        assert_eq!(base_amount, dec!("999124.4"));
+        assert_eq!(quote_amount, dec!("998675.167015110982888752"));
+    }
+
+    #[test]
+    fn test_swap_base_to_quote_and_back_across_eq() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(250))
+            ),
+        ).assert_is_success();
+        let _receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(500))
+            ),
+        ).assert_is_success();
+        //save_receipt_to_file("swap_incoming.txt", &receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   

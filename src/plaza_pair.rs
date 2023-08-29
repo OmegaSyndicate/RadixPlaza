@@ -18,6 +18,16 @@ pub struct PairState {
     last_out_spot: Decimal,     // Last outgoing spot price
 }
 
+impl PairState {
+    pub fn set_output_target(&mut self, output_target: Decimal, input_is_quote: bool) {
+        if input_is_quote {
+            self.base_target = output_target;
+        } else {
+            self.quote_target = output_target;
+        }
+    }
+}
+
 #[derive(ScryptoSbor)]
 pub struct PairConfig {
     k_in: Decimal,              // Ingress price curve exponent
@@ -43,8 +53,6 @@ mod plazapair {
         state: PairState,                   // Pool parameters
         base_vault: Vault,                  // Holds the base tokens
         quote_vault: Vault,                 // Holds the quote tokens
-        base_fees_vault: Vault,             // Holds the base fees (owned by quote LPs)
-        quote_fees_vault: Vault,            // Holds the quote fees (owned by base LPs)
         base_lp: ResourceManager,           // Resource address of base LP tokens
         quote_lp: ResourceManager,          // Resource address of quote LP tokens
     }
@@ -121,8 +129,6 @@ mod plazapair {
                 },
                 base_vault: Vault::new(base_token),
                 quote_vault: Vault::new(quote_token),
-                base_fees_vault: Vault::new(base_token),
-                quote_fees_vault: Vault::new(quote_token),
                 base_lp: base_lp,
                 quote_lp: quote_lp,
             }
@@ -290,7 +296,7 @@ mod plazapair {
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
 
             // Set the input and output vaults and targets based on input_tokens type
-            let (input_actual, mut output_actual, input_target, output_target) =
+            let (input_actual, mut output_actual, input_target, mut output_target) =
                 if input_is_quote {
                     (
                         quote_actual,
@@ -345,31 +351,22 @@ mod plazapair {
             if new_state.shortage == in_input_shortage {
                 let shortage_amount = input_target - input_actual;
                 debug!("  Input shortage of {} detected.", shortage_amount);
-                if amount_to_trade >= shortage_amount {
-                    // Trading past equilibrium
-                    output_amount = self.calc_incoming(
-                        shortage_amount,
-                        input_target,
-                        input_actual,
-                        p_ref,
-                    );
-                    amount_to_trade -= shortage_amount;
-                    debug!("  Trading to/past equilibrium. First leg {}", output_amount);
+                output_amount = self.calc_incoming(
+                    std::cmp::min(amount_to_trade, shortage_amount),
+                    input_target,
+                    input_actual,
+                    p_ref,
+                );
 
-                    // Update variables for second part of trade
+                if amount_to_trade >= shortage_amount {
+                    debug!("  Trading to/past equilibrium. First leg {}", output_amount);
+                    amount_to_trade -= shortage_amount;
+                    output_target = output_actual - output_amount;
+                    new_state.set_output_target(output_target, input_is_quote);
                     new_state.last_out_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
                     output_actual = output_target;
-                    p_ref = dec!(1) / p_ref;
-                } else {
-                    debug!("  Trading towards equilibrium (incoming curve).");
-                    // Trading towards but short of equilibrium
-                    output_amount = self.calc_incoming(
-                        amount_to_trade,
-                        input_target,
-                        input_actual,
-                        p_ref,
-                    );
+                    p_ref = dec!(1) / p_ref;    
                 }
             }
 
