@@ -228,13 +228,13 @@ mod plazapair_tests {
     #[test]
     fn test_swap_quote_to_base() {
         let mut test_engine = init_funded();
-        let receipt = test_engine.call_method(
+        let _receipt = test_engine.call_method(
             "swap",
             env_args!(
                 Environment::FungibleBucket("quote", dec!(2000))
             ),
         ).assert_is_success();
-        save_receipt_to_file("swap_outgoing.txt", &receipt);
+        //save_receipt_to_file("swap_outgoing.txt", &receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         assert_eq!(base_amount, dec!("999498.5"));
@@ -254,6 +254,74 @@ mod plazapair_tests {
         let quote_amount = test_engine.current_balance("quote");
         assert_eq!(base_amount, dec!(998_500));
         assert_eq!(quote_amount, dec!("999498.5"));
+    }
+
+    #[test]
+    fn test_swap_quote_to_base_two_step() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(1000))
+            ),
+        ).assert_is_success();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(1000))
+            ),
+        ).assert_is_success();
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        assert_eq!(base_amount, dec!("999498.562242477213135249"));
+        assert_eq!(quote_amount, dec!(997_000));
+    }
+
+    #[test]
+    fn test_swap_base_to_quote_two_step() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(250))
+            ),
+        ).assert_is_success();
+        let _receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(250))
+            ),
+        ).assert_is_success();
+        //save_receipt_to_file("swap_outgoing.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        assert_eq!(base_amount, dec!(998_500));
+        assert_eq!(quote_amount, dec!("999498.562242477213135186"));
+    }
+
+    #[test]
+    fn test_swap_base_to_quote_and_back() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(250))
+            ),
+        ).assert_is_success();
+        let receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(500))
+            ),
+        ).assert_is_success();
+        save_receipt_to_file("swap_incoming.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        assert_eq!(base_amount, dec!(998_500));
+        assert_eq!(quote_amount, dec!("999498.562242477213135186"));
     }
 }
 

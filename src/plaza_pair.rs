@@ -40,9 +40,11 @@ mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
         config: PairConfig,                 // Pool configuration
-        state: PairState,                 // Pool parameters
+        state: PairState,                   // Pool parameters
         base_vault: Vault,                  // Holds the base tokens
         quote_vault: Vault,                 // Holds the quote tokens
+        base_fees_vault: Vault,             // Holds the base fees (owned by quote LPs)
+        quote_fees_vault: Vault,            // Holds the quote fees (owned by base LPs)
         base_lp: ResourceManager,           // Resource address of base LP tokens
         quote_lp: ResourceManager,          // Resource address of quote LP tokens
     }
@@ -119,6 +121,8 @@ mod plazapair {
                 },
                 base_vault: Vault::new(base_token),
                 quote_vault: Vault::new(quote_token),
+                base_fees_vault: Vault::new(base_token),
+                quote_fees_vault: Vault::new(quote_token),
                 base_lp: base_lp,
                 quote_lp: quote_lp,
             }
@@ -327,26 +331,33 @@ mod plazapair {
             debug!("  p_ref used: {}", p_ref);
 
             // Determine which state represents input shortage based on input type
-            let input_shortage = match input_is_quote {
+            let in_input_shortage = match input_is_quote {
                 true => Shortage::QuoteShortage,
                 false => Shortage::BaseShortage
             };
-            debug!("  Input shortage indicated as {}", input_shortage);
+            debug!("  Input shortage indicated as {}", in_input_shortage);
 
             // Define running counters
             let mut amount_to_trade = input_amount;
             let mut output_amount = dec!(0);
 
             // Handle the incoming case (trading towards equilibrium)
-            if new_state.shortage == input_shortage {
-                debug!("  Input shortage detected.");
-                if amount_to_trade + input_actual >= input_target {
-                    debug!("  Trading past equilibrium.");
+            if new_state.shortage == in_input_shortage {
+                let shortage_amount = input_target - input_actual;
+                debug!("  Input shortage of {} detected.", shortage_amount);
+                if amount_to_trade >= shortage_amount {
                     // Trading past equilibrium
-                    amount_to_trade -= input_target - input_actual;
-                    output_amount = output_actual - output_target;
+                    output_amount = self.calc_incoming(
+                        shortage_amount,
+                        input_target,
+                        input_actual,
+                        p_ref,
+                    );
+                    amount_to_trade -= shortage_amount;
+                    debug!("  Trading to/past equilibrium. First leg {}", output_amount);
 
                     // Update variables for second part of trade
+                    new_state.last_out_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;
@@ -363,12 +374,12 @@ mod plazapair {
             }
 
             // Handle the trading away from equilbrium case
-            if new_state.shortage != input_shortage && amount_to_trade > dec!(0) {
+            if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
                 debug!("  Trade on outgoing curve");
                 // Calibrate outgoing price curve to incoming at spot price.
                 let last_out_spot = match input_is_quote {
-                    true => self.state.last_out_spot,
-                    false => dec!(1) / self.state.last_out_spot,
+                    true => new_state.last_out_spot,
+                    false => dec!(1) / new_state.last_out_spot,
                 };
                 let target2 = output_target * output_target;
                 let actual2 = output_actual * output_actual;
@@ -378,7 +389,7 @@ mod plazapair {
                 let virtual_p_ref = (num_new + num_old) / den;
                 debug!("  Skew factor: {}, last_spot: {}", factor, self.state.last_out_spot);                
                 debug!("  num_new: {}, num_old: {}, den: {}, p_ref: {}", num_new, num_old, den, p_ref);                
-                debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_actual, output_target, virtual_p_ref);
+                debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
                 // Calculate output amount based on outgoing curve
                 let outgoing_output = self.calc_outgoing(
                     amount_to_trade,
@@ -389,7 +400,7 @@ mod plazapair {
                 output_amount += outgoing_output;
 
                 // Select what the new exchange state should be
-                new_state.shortage = match input_shortage {
+                new_state.shortage = match in_input_shortage {
                     Shortage::QuoteShortage => Shortage::BaseShortage,
                     Shortage::BaseShortage => Shortage::QuoteShortage,
                     Shortage::Equilibrium => {
@@ -410,7 +421,7 @@ mod plazapair {
                 new_state.last_out_spot = match new_state.shortage {
                     Shortage::BaseShortage => (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref,
                     Shortage::Equilibrium => new_state.p0,
-                    Shortage::QuoteShortage => dec!(1) / (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref, 
+                    Shortage::QuoteShortage => dec!(1) / (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) / virtual_p_ref, 
                 };
             }
 
@@ -441,11 +452,11 @@ mod plazapair {
             assert!(actual + input_amount <= target, "Infeasible amount");
             
             // Calculate the existing surplus as per AMM curve
-            let surplus_before = (target - actual) * p_ref * target / actual;
+            let surplus_before = (target - actual) * p_ref * (dec!(1) + self.config.k_in * (target - actual) / actual);
 
             // Calculate the new surplus as per the AMM curve
             let actual_after = actual + input_amount;
-            let surplus_after = (target - actual_after) * p_ref * target / actual_after;
+            let surplus_after = (target - actual_after) * p_ref * (dec!(1) + self.config.k_in * (target - actual_after) / actual_after);
 
             // The difference is the output amount
             surplus_before - surplus_after
