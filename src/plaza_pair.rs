@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::plaza_events::*;
 
 #[derive(ScryptoSbor, Copy, Clone, PartialEq)]
 pub enum Shortage {
@@ -12,7 +13,7 @@ pub struct PairState {
     p0: Decimal,                // Equilibrium price
     base_target: Decimal,       // Target amount of base tokens
     quote_target: Decimal,      // Target amount of quote tokens
-    shortage: Shortage,           // Current state of the pair
+    shortage: Shortage,         // Current state of the pair
     last_trade: i64,            // Timestamp of last trade
     last_outgoing: i64,         // Timestamp of last outgoing trade
     last_out_spot: Decimal,     // Last outgoing spot price
@@ -46,6 +47,7 @@ impl fmt::Display for Shortage {
 }
 
 #[blueprint]
+#[events(SwapBaseToQuoteEvent, SwapQuoteToBaseEvent)]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
@@ -58,13 +60,11 @@ mod plazapair {
     }
 
     impl PlazaPair {
-        // Instantiate a new Plaza style trading pair
         pub fn instantiate_pair(
             base_token: ResourceAddress,
             quote_token: ResourceAddress,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
-            // Ensure both tokens are fungible
             let base_manager = ResourceManager::from(base_token);
             let quote_manager = ResourceManager::from(quote_token);
             assert!(base_manager.resource_type().is_fungible(), "non-fungible base token detected");
@@ -74,7 +74,7 @@ mod plazapair {
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(Runtime::blueprint_id());
 
-            // Create LP tokens for the base token providers, starting at 1:1
+            // Create LP tokens for the base token providers
             let base_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
                 .metadata(metadata! {
                     init {
@@ -92,7 +92,7 @@ mod plazapair {
                 })
                 .create_with_no_initial_supply();
 
-            // Create LP tokens for the quote token providers, starting at 1:1
+            // Create LP tokens for the quote token providers
             let quote_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
                 .metadata(metadata! {
                     init {
@@ -140,7 +140,6 @@ mod plazapair {
 
         // Add liquidity to the pool in return for LP tokens
         pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
-            // Ensure the bucket is not empty
             assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
         
             // Determine if the bucket is for the quote or the base pool
@@ -158,10 +157,8 @@ mod plazapair {
         
             // Calculate the new LP amount
             let new_lp_value = if lp_outstanding == dec!(0) { 
-                // If the LP supply is zero, the new LP value is the input amount
                 input_bucket.amount()
             } else {
-                // Otherwise, it's calculated based on the input amount, target and LP supply
                 input_bucket.amount() / *target_value * lp_outstanding
             };
         
@@ -174,7 +171,6 @@ mod plazapair {
         }
 
         // Exchange LP tokens for the underlying liquidity held in the pair
-        // TODO -- RESET TARGETS ON PRICE X-OVER
         // TODO -- ENSURE HEALTH WITH ZERO LIQ
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             // Ensure the bucket isn't empty
@@ -239,8 +235,9 @@ mod plazapair {
             assert!(input_tokens.amount() > dec!(0), "Empty input bucket");
 
             // Calculate the amount of output tokens and pair impact variables.
+            let input_amount = input_tokens.amount();
             let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
-            let (output_amount, fee, mut new_state) = self.quote(input_tokens.amount(), is_quote);
+            let (output_amount, fee, mut new_state) = self.quote(input_amount, is_quote);
 
             // Log trade event
             let (token_in, token_out) = if is_quote {
@@ -248,9 +245,8 @@ mod plazapair {
             } else {
                 ("base", "quote")
             };
-            info!("  SWAP: {} {} for {} {}.", input_tokens.amount(), token_in, output_amount, token_out);
+            info!("  SWAP: {} {} for {} {}.", input_amount, token_in, output_amount, token_out);
 
-            // TODO: fee sharing
             // Update the target values and select the input and output vaults based on input_tokens type.
             let (input_vault, output_vault) = if is_quote {
                 new_state.base_target += fee;
@@ -263,6 +259,22 @@ mod plazapair {
             // Adjust pair state variables.
             self.state = new_state;
             debug!("  p0: {} -- state {}", new_state.p0, new_state.shortage);
+
+            if is_quote { 
+                Runtime::emit_event(
+                    SwapQuoteToBaseEvent{
+                        quote_in: input_amount,
+                        base_out: output_amount,
+                    }
+                )
+            } else {
+                Runtime::emit_event(
+                    SwapBaseToQuoteEvent{
+                        base_in: input_amount,
+                        quote_out: output_amount,
+                    }
+                )
+            };
 
             // Transfer the tokens.
             input_vault.put(input_tokens);
@@ -362,11 +374,13 @@ mod plazapair {
                     debug!("  Trading to/past equilibrium. First leg {}", output_amount);
                     amount_to_trade -= shortage_amount;
                     output_target = output_actual - output_amount;
+                    output_actual = output_target;
+                    p_ref = dec!(1) / p_ref;    
+                    
+                    // Update state variables
                     new_state.set_output_target(output_target, input_is_quote);
                     new_state.last_out_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
-                    output_actual = output_target;
-                    p_ref = dec!(1) / p_ref;    
                 }
             }
 
