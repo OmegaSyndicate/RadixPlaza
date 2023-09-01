@@ -271,6 +271,7 @@ mod plazapair_tests {
                 Environment::FungibleBucket("quote", dec!(1000))
             ),
         ).assert_is_success();
+        //save_receipt_to_file("swap_outgoing.txt", &receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
@@ -299,6 +300,64 @@ mod plazapair_tests {
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
         assert_eq!(base_amount, dec!(998_500));
         assert_eq!(quote_amount, dec!("999498.562242477213135186"));
+    }
+
+    #[test]
+    fn test_swap_quote_to_base_three_step() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(1000))
+            ),
+        ).assert_is_success();
+        let _receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(500))
+            ),
+        ).assert_is_success();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("quote", dec!(500))
+            ),
+        ).assert_is_success();        
+        //save_receipt_to_file("swap_outgoing.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        assert_eq!(base_amount, dec!("999498.566682382973174771"));
+        assert_eq!(quote_amount, dec!(997_000));
+    }
+
+    #[test]
+    fn test_swap_base_to_quote_three_step() {
+        let mut test_engine = init_funded();
+        test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(250))
+            ),
+        ).assert_is_success();
+        let _receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(125))
+            ),
+        ).assert_is_success();
+        let receipt = test_engine.call_method(
+            "swap",
+            env_args!(
+                Environment::FungibleBucket("base", dec!(125))
+            ),
+        ).assert_is_success();
+        save_receipt_to_file("swap_outgoing.txt", &receipt);
+        let base_amount = test_engine.current_balance("base");
+        let quote_amount = test_engine.current_balance("quote");
+        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        assert_eq!(base_amount, dec!(998_500));
+        assert_eq!(quote_amount, dec!("999498.566682382973174535"));
     }
 
     #[test]
@@ -370,79 +429,3 @@ mod plazapair_tests {
         assert_eq!(quote_amount, dec!("999498.562242477213135186"));
     }
 }
-
-
-// use scrypto::prelude::*;
-// mod utils;
-
-// #[test]
-// fn instantiates() {
-//     let (_test_runner, _user, _dex, _tokens) = utils::fixtures();
-// }
-
-// #[test]
-// fn swap_a_to_quote() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::swap(&mut test_runner, dex, tokens[1], dec!(1), tokens[0], &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();    
-// }
-
-// #[test]
-// fn swap_quote_to_a() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::swap(&mut test_runner, dex, tokens[0], dec!(1), tokens[1], &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();    
-// }
-
-// #[test]
-// fn swap_a_to_b() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::swap(&mut test_runner, dex, tokens[1], dec!(1), tokens[2], &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();    
-// }
-
-// #[test]
-// fn swap_refuses_a_to_a() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::swap(&mut test_runner, dex, tokens[1], dec!(1), tokens[1], &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_failure();    
-// }
-
-// #[test]
-// fn add_quote_in_equilibrium() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::add_liquidity(&mut test_runner, dex, tokens[0], dec!(1), Some(tokens[1]), &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();
-// }
-
-// #[test]
-// fn add_a_in_equilibrium() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let receipt = utils::add_liquidity(&mut test_runner, dex, tokens[1], dec!(1), None, &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();
-// }
-
-// #[test]
-// fn remove() {
-//     let (mut test_runner, user, dex, tokens) = utils::fixtures();
-//     let (base_lp, _quote_lp) = utils::get_lp_tokens(&mut test_runner, dex, tokens[1], &user);
-//     let receipt = utils::remove_liquidity(&mut test_runner, dex, base_lp, dec!(1), &user);
-//     println!("{:?}\n", receipt);
-//     receipt.expect_commit_success();
-// }
-
-
-
-// // #[test]
-// // fn remove_accepts_base_removal() {
-// //     let (mut test_runner, account, key, pair, base_address, _quote_address) = utils::fixtures();
-// //     let receipt = utils::remove_liquidity(&mut test_runner, base_address, dec!(1), pair, account, key);
-// //     println!("{:?}\n", receipt);
-// //     receipt.expect_commit_success();
-// // }

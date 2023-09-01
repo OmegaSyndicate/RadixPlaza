@@ -47,7 +47,7 @@ impl fmt::Display for Shortage {
 }
 
 #[blueprint]
-#[events(SwapBaseToQuoteEvent, SwapQuoteToBaseEvent)]
+#[events(SwapEvent)]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
@@ -240,6 +240,12 @@ mod plazapair {
             let (output_amount, fee, mut new_state) = self.quote(input_amount, is_quote);
 
             // Log trade event
+            let (base_amount, quote_amount) = match is_quote{
+                true => (-output_amount, input_amount),
+                false => (input_amount, -output_amount),
+            };
+            Runtime::emit_event(SwapEvent{base_amount, quote_amount});
+
             let (token_in, token_out) = if is_quote {
                 ("quote", "base")
             } else {
@@ -259,22 +265,6 @@ mod plazapair {
             // Adjust pair state variables.
             self.state = new_state;
             debug!("  p0: {} -- state {}", new_state.p0, new_state.shortage);
-
-            if is_quote { 
-                Runtime::emit_event(
-                    SwapQuoteToBaseEvent{
-                        quote_in: input_amount,
-                        base_out: output_amount,
-                    }
-                )
-            } else {
-                Runtime::emit_event(
-                    SwapBaseToQuoteEvent{
-                        base_in: input_amount,
-                        quote_out: output_amount,
-                    }
-                )
-            };
 
             // Transfer the tokens.
             input_vault.put(input_tokens);

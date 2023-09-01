@@ -1,25 +1,21 @@
 use scrypto::prelude::*;
 
 #[derive(ScryptoSbor, ScryptoEvent)]
-pub struct AddBaseLiquidityEvent {
-    pub input_amount: Decimal,
-    pub lp_tokens: Decimal,
+pub struct AddLiquidityEvent {
+    pub is_quote: bool,
+    pub token_amount: Decimal,
+    pub lp_amount: Decimal,
 }
 
 #[derive(ScryptoSbor, ScryptoEvent)]
-pub struct AddQuoteLiquidityEvent {
-    pub input_amount: Decimal,
-    pub lp_tokens: Decimal,
+pub struct RemoveLiquidityEvent {
+    pub is_quote: bool,
+    pub token_amount: Decimal,
+    pub lp_amount: Decimal,
 }
 
 #[derive(ScryptoSbor, ScryptoEvent)]
-pub struct SwapBaseToQuoteEvent {
-    pub base_in: Decimal,
-    pub quote_out: Decimal,
-}
-
-#[derive(ScryptoSbor, ScryptoEvent)]
-pub struct SwapQuoteToBaseEvent {
-    pub quote_in: Decimal,
-    pub base_out: Decimal,
+pub struct SwapEvent {
+    pub base_amount: Decimal,
+    pub quote_amount: Decimal,
 }
