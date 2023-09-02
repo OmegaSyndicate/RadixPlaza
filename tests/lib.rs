@@ -234,7 +234,7 @@ mod plazapair_tests {
                 Environment::FungibleBucket("quote", dec!(2000))
             ),
         ).assert_is_success();
-        //save_receipt_to_file("swap_outgoing.txt", &receipt);
+        //save_receipt_to_file("swap_outgoing.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         assert_eq!(base_amount, dec!("999498.5"));
@@ -275,7 +275,7 @@ mod plazapair_tests {
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
-        assert_eq!(base_amount, dec!("999498.562242477213135249"));
+        assert_eq!(base_amount, dec!("999498.562242477213135436"));
         assert_eq!(quote_amount, dec!(997_000));
     }
 
@@ -299,7 +299,7 @@ mod plazapair_tests {
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
         assert_eq!(base_amount, dec!(998_500));
-        assert_eq!(quote_amount, dec!("999498.562242477213135186"));
+        assert_eq!(quote_amount, dec!("999498.562242477213135685"));
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod plazapair_tests {
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
-        assert_eq!(base_amount, dec!("999498.566682382973174771"));
+        assert_eq!(base_amount, dec!("999498.566682382973175074"));
         assert_eq!(quote_amount, dec!(997_000));
     }
 
@@ -346,18 +346,18 @@ mod plazapair_tests {
                 Environment::FungibleBucket("base", dec!(125))
             ),
         ).assert_is_success();
-        let receipt = test_engine.call_method(
+        let _receipt = test_engine.call_method(
             "swap",
             env_args!(
                 Environment::FungibleBucket("base", dec!(125))
             ),
         ).assert_is_success();
-        save_receipt_to_file("swap_outgoing.txt", &receipt);
+        // save_receipt_to_file("swap_outgoing.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
         assert_eq!(base_amount, dec!(998_500));
-        assert_eq!(quote_amount, dec!("999498.566682382973174535"));
+        assert_eq!(quote_amount, dec!("999498.566682382973175408"));
     }
 
     #[test]
@@ -369,17 +369,17 @@ mod plazapair_tests {
                 Environment::FungibleBucket("base", dec!(250))
             ),
         ).assert_is_success();
-        let receipt = test_engine.call_method(
+        let _receipt = test_engine.call_method(
             "swap",
             env_args!(
                 Environment::FungibleBucket("quote", dec!(150))
             ),
         ).assert_is_success();
-        save_receipt_to_file("swap_incoming.txt", &receipt);
+        // save_receipt_to_file("swap_incoming.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Definitely not a favorable trade to make  
-        assert_eq!(base_amount, dec!("998849.761995963453922185"));
+        assert_eq!(base_amount, dec!("998857.645552688276204298"));
         assert_eq!(quote_amount, dec!("999182.333333333333333334"));
     }
 
@@ -392,18 +392,18 @@ mod plazapair_tests {
                 Environment::FungibleBucket("quote", dec!(500))
             ),
         ).assert_is_success();
-        let receipt = test_engine.call_method(
+        let _receipt = test_engine.call_method(
             "swap",
             env_args!(
                 Environment::FungibleBucket("base", dec!(75))
             ),
         ).assert_is_success();
-        save_receipt_to_file("swap_incoming.txt", &receipt);
+        // save_receipt_to_file("swap_incoming.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Definitely not a favorable trade to make  
         assert_eq!(base_amount, dec!("999124.4"));
-        assert_eq!(quote_amount, dec!("998675.167015110982888752"));
+        assert_eq!(quote_amount, dec!("998679.44769142102292177"));
     }
 
     #[test]
@@ -421,11 +421,11 @@ mod plazapair_tests {
                 Environment::FungibleBucket("quote", dec!(500))
             ),
         ).assert_is_success();
-        //save_receipt_to_file("swap_incoming.txt", &receipt);
+        save_receipt_to_file("swap_incoming.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
-        assert_eq!(base_amount, dec!(998_500));
+        assert_eq!(base_amount, dec!("999045.45935509283981328"));
         assert_eq!(quote_amount, dec!("999498.562242477213135186"));
     }
 }

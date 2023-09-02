@@ -16,7 +16,7 @@ pub struct PairState {
     shortage: Shortage,         // Current state of the pair
     last_trade: i64,            // Timestamp of last trade
     last_outgoing: i64,         // Timestamp of last outgoing trade
-    last_out_spot: Decimal,     // Last outgoing spot price
+    last_spot: Decimal,     // Last outgoing spot price
 }
 
 impl PairState {
@@ -25,6 +25,14 @@ impl PairState {
             self.base_target = output_target;
         } else {
             self.quote_target = output_target;
+        }
+    }
+
+    pub fn set_input_target(&mut self, input_target: Decimal, input_is_quote: bool) {
+        if input_is_quote {
+            self.quote_target = input_target;
+        } else {
+            self.base_target = input_target;
         }
     }
 }
@@ -125,7 +133,7 @@ mod plazapair {
                     shortage: Shortage::Equilibrium,
                     last_trade: now,
                     last_outgoing: now,
-                    last_out_spot: initial_price,
+                    last_spot: initial_price,
                 },
                 base_vault: Vault::new(base_token),
                 quote_vault: Vault::new(quote_token),
@@ -319,23 +327,32 @@ mod plazapair {
             let new_p0 = match self.state.shortage {
                 Shortage::BaseShortage => {
                     let quote_surplus = quote_actual - self.state.quote_target;
-                    self.calc_p0(quote_surplus, self.state.base_target, base_actual)
+                    self.calc_p0_from_surplus(quote_surplus, self.config.k_in, self.state.base_target, base_actual)
                 }
                 Shortage::Equilibrium => self.state.p0,
                 Shortage::QuoteShortage => {
                     let base_surplus = base_actual - self.state.base_target;
-                    dec!(1) / self.calc_p0(base_surplus, self.state.quote_target, quote_actual)
+                    dec!(1) / self.calc_p0_from_surplus(base_surplus, self.config.k_in, self.state.quote_target, quote_actual)
                 }
             };
             let p0 = factor * self.state.p0 + (dec!(1) - factor) * new_p0;
             new_state.p0 = p0;
+            debug!("  old_p0: {}, new_p0: {}, skewed_p0: {}", self.state.p0, new_p0, p0);
+
 
             // Set reference price to B[Q] or Q[B] depending on liquidity
-            let mut p_ref = match self.state.shortage {
-                Shortage::BaseShortage => p0,
-                Shortage::Equilibrium => if input_is_quote { p0 } else { dec!(1) / p0 },
-                Shortage::QuoteShortage => dec!(1) / p0
-            };
+            let (mut p_ref, mut last_spot) = 
+                match self.state.shortage {
+                    Shortage::BaseShortage => { (p0, self.state.last_spot) },
+                    Shortage::Equilibrium => {
+                        if input_is_quote {
+                            (p0, self.state.last_spot)
+                        } else {
+                            (dec!(1) / p0, dec!(1) / self.state.last_spot)
+                        }
+                    },
+                    Shortage::QuoteShortage => { (dec!(1) / p0, dec!(1) / self.state.last_spot) },
+                };
             debug!("  p_ref used: {}", p_ref);
 
             // Determine which state represents input shortage based on input type
@@ -351,26 +368,39 @@ mod plazapair {
 
             // Handle the incoming case (trading towards equilibrium)
             if new_state.shortage == in_input_shortage {
-                let shortage_amount = input_target - input_actual;
-                debug!("  Input shortage of {} detected.", shortage_amount);
+                let surplus = output_actual - output_target;
+                let adjusted_target = self.calc_target(p_ref, self.config.k_in, input_actual, surplus);
+                let shortfall = adjusted_target - input_actual;
+                let leg_amount = std::cmp::min(amount_to_trade, shortfall);
+                debug!("  Input shortage of {} detected.", shortfall);
+                debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
+                debug!("  Amount: {}, target: {}, adj_target {}, actual {}", leg_amount, input_target, adjusted_target, input_actual);
                 output_amount = self.calc_incoming(
-                    std::cmp::min(amount_to_trade, shortage_amount),
-                    input_target,
+                    leg_amount,
+                    adjusted_target,
                     input_actual,
                     p_ref,
                 );
 
-                if amount_to_trade >= shortage_amount {
+                new_state.set_input_target(adjusted_target, input_is_quote);
+                if amount_to_trade >= shortfall {
                     debug!("  Trading to/past equilibrium. First leg {}", output_amount);
-                    amount_to_trade -= shortage_amount;
+                    amount_to_trade -= shortfall;
                     output_target = output_actual - output_amount;
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;    
+                    last_spot = p_ref;
                     
                     // Update state variables
                     new_state.set_output_target(output_target, input_is_quote);
-                    new_state.last_out_spot = p0;
+                    new_state.last_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
+                } else {
+                    new_state.last_spot = match new_state.shortage {
+                        Shortage::BaseShortage => self.calc_spot(p_ref, self.config.k_in, adjusted_target, input_actual + leg_amount),
+                        Shortage::Equilibrium => p0,
+                        Shortage::QuoteShortage => { dec!(1) / self.calc_spot(p_ref, self.config.k_in, adjusted_target, input_actual + leg_amount) }, 
+                    };
                 }
             }
 
@@ -378,18 +408,9 @@ mod plazapair {
             if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
                 debug!("  Trade on outgoing curve");
                 // Calibrate outgoing price curve to incoming at spot price.
-                let last_out_spot = match input_is_quote {
-                    true => new_state.last_out_spot,
-                    false => dec!(1) / new_state.last_out_spot,
-                };
-                let target2 = output_target * output_target;
-                let actual2 = output_actual * output_actual;
-                let num_new = (dec!(1) - factor) * (actual2 + self.config.k_in * (target2 - actual2)) * p_ref;
-                let num_old = factor * actual2 * last_out_spot;
-                let den = actual2 + self.config.k_out * (target2 - actual2);
-                let virtual_p_ref = (num_new + num_old) / den;
-                debug!("  Skew factor: {}, last_spot: {}", factor, self.state.last_out_spot);                
-                debug!("  num_new: {}, num_old: {}, den: {}, p_ref: {}", num_new, num_old, den, p_ref);                
+                let virtual_p_ref = self.calc_p0_from_spot(last_spot, self.config.k_out, output_target, output_actual);
+
+                debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
                 debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
                 // Calculate output amount based on outgoing curve
                 let outgoing_output = self.calc_outgoing(
@@ -418,13 +439,14 @@ mod plazapair {
 
                 // Calculate and store previous outgoing spot price
                 let new_actual = output_actual - outgoing_output;
-                let new_actual2 = new_actual * new_actual;
-                new_state.last_out_spot = match new_state.shortage {
-                    Shortage::BaseShortage => (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) * virtual_p_ref,
-                    Shortage::Equilibrium => new_state.p0,
-                    Shortage::QuoteShortage => dec!(1) / (dec!(1) + self.config.k_out * (target2 - new_actual2) / new_actual2) / virtual_p_ref, 
+                new_state.last_spot = match new_state.shortage {
+                    Shortage::BaseShortage => self.calc_spot(virtual_p_ref, self.config.k_out, output_target, new_actual),
+                    Shortage::Equilibrium => p0,
+                    Shortage::QuoteShortage => dec!(1) / self.calc_spot(virtual_p_ref, self.config.k_out, output_target, new_actual), 
                 };
             }
+
+            debug!("  Last spot: {}", new_state.last_spot);
 
             // Apply trading fee
             let fee = self.config.fee * output_amount;
@@ -432,13 +454,38 @@ mod plazapair {
             (output_amount - fee, fee, new_state)
         }
 
-        // Calculate the price at equilibrium (p0) given surplus, target, and actual token amounts
-        fn calc_p0(&self, surplus: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+        // Calculate target amount from curve
+        fn calc_target(&self, p0: Decimal, k: Decimal, actual: Decimal, surplus: Decimal) -> Decimal {
+            let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
+            let num = (dec!(2) * k - 1 + radicand.sqrt().unwrap()) * actual;
+            num / k / dec!(2)
+        }
+
+        // Calculate spot price from curve
+        fn calc_spot(&self, p0: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+            let target2 = target * target;
+            let actual2 = actual * actual;
+
+            let num = actual2 + k * (target2 - actual2);
+            num / actual2 * p0
+        }
+
+        // Calculate equilibrium price from shortage and spot price
+        fn calc_p0_from_spot(&self, p_spot: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+            let target2 = target * target;
+            let actual2 = actual * actual;
+
+            let den = actual2 + k * (target2 - actual2);
+            actual2 / den * p_spot
+        }
+
+        // Calculate at what price incoming trades reach equilibrium following the curve
+        fn calc_p0_from_surplus(&self, surplus: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
             // Calculate the shortage of tokens
             let shortage = target - actual;
 
             // Calculate the price at equilibrium (p0) using the given formula
-            surplus / shortage / (dec!(1) + self.config.k_in * shortage / actual)
+            surplus / shortage / (dec!(1) + k * shortage / actual)
         }
 
         // Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
