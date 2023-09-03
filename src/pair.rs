@@ -4,7 +4,7 @@ use crate::helpers::*;
 use crate::types::*;
 
 #[blueprint]
-#[events(SwapEvent, AddLiquidityEvent)]
+#[events(SwapEvent, AddLiquidityEvent, RemoveLiquidityEvent)]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
@@ -147,7 +147,8 @@ mod plazapair {
         // TODO -- ENSURE HEALTH WITH ZERO LIQ
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             // Ensure the bucket isn't empty
-            assert!(lp_tokens.amount() > dec!(0), "Empty bucket provided");
+            let lp_amount = lp_tokens.amount();
+            assert!(lp_amount > dec!(0), "Empty bucket provided");
             assert!(
                 lp_tokens.resource_address() == self.quote_lp.address() ||
                     lp_tokens.resource_address() == self.base_lp.address(), 
@@ -156,7 +157,7 @@ mod plazapair {
 
             // Determine which vault and target values should be used
             let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
-            let (this_vault, other_vault, this_target, other_target, is_shortage, lp_manager) = if is_quote {
+            let (main_vault, other_vault, main_target, other_target, is_shortage, lp_manager) = if is_quote {
                 (
                     &mut self.quote_vault,
                     &mut self.base_vault,
@@ -178,28 +179,31 @@ mod plazapair {
 
             // Calculate fraction of liquidity being withdrawn
             let lp_outstanding = lp_manager.total_supply().unwrap();
-            let fraction = lp_tokens.amount() / lp_outstanding;
+            let fraction = lp_amount / lp_outstanding;
 
             // Calculate how many tokens are represented by the withdrawn LP tokens
-            let (this_amount, other_amount) = if is_shortage {                
+            let (main_amount, other_amount) = if is_shortage {                
                 let surplus = other_vault.amount() - other_target;
                 (
-                    fraction * this_vault.amount(),
+                    fraction * main_vault.amount(),
                     fraction * surplus,
                 )
             } else {
                 (
-                    fraction * *this_target,
+                    fraction * *main_target,
                     dec!(0),
                 )
             };
 
             // Burn the LP tokens and update the target value
             lp_tokens.burn();
-            *this_target -= fraction * *this_target;
+            *main_target -= fraction * *main_target;
+
+            // Emit RemoveLiquidityEvent
+            Runtime::emit_event(RemoveLiquidityEvent{is_quote, main_amount, other_amount, lp_amount});
 
             // Take liquidity from the vault and return to the caller
-            (this_vault.take(this_amount), other_vault.take(other_amount))
+            (main_vault.take(main_amount), other_vault.take(other_amount))
         }
 
         /// Swap a bucket of tokens along the AMM curve.

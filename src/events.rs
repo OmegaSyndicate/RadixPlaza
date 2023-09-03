@@ -10,7 +10,8 @@ pub struct AddLiquidityEvent {
 #[derive(ScryptoSbor, ScryptoEvent)]
 pub struct RemoveLiquidityEvent {
     pub is_quote: bool,
-    pub token_amount: Decimal,
+    pub main_amount: Decimal,
+    pub other_amount: Decimal,
     pub lp_amount: Decimal,
 }
 
