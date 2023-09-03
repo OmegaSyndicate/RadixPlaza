@@ -55,7 +55,6 @@ mod plazadex {
             if dfp2.amount() > dec!(0) {
                 let lp_tokens = pair.add_liquidity(dfp2);
                 let dfp2_vault = Vault::with_bucket(lp_tokens);
-                // TODO: locking mechanism
                 self.dfp2_reserves.insert(token, dfp2_vault);
             }
 
