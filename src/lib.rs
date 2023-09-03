@@ -1,4 +1,4 @@
-mod dex;
-mod pair;
-mod events;
-mod helpers;
+pub mod dex;
+pub mod pair;
+pub mod events;
+pub mod helpers;

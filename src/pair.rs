@@ -17,7 +17,7 @@ pub struct PairState {
     shortage: Shortage,         // Current state of the pair
     last_trade: i64,            // Timestamp of last trade
     last_outgoing: i64,         // Timestamp of last outgoing trade
-    last_spot: Decimal,     // Last outgoing spot price
+    last_spot: Decimal,         // Last outgoing spot price
 }
 
 impl PairState {
@@ -40,9 +40,9 @@ impl PairState {
 
 #[derive(ScryptoSbor)]
 pub struct PairConfig {
-    k_in: Decimal,              // Ingress price curve exponent
-    k_out: Decimal,             // Egress price curve exponent
-    fee: Decimal,               // Trading fee
+    pub k_in: Decimal,              // Ingress price curve exponent
+    pub k_out: Decimal,             // Egress price curve exponent
+    pub fee: Decimal,               // Trading fee
 }
 
 impl fmt::Display for Shortage {
@@ -74,10 +74,20 @@ mod plazapair {
             quote_token: ResourceAddress,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
+            let config = PairConfig {
+                k_in: dec!("0.4"),
+                k_out: dec!("1"),
+                fee: dec!("0.003"),
+            };
+            assert!(config.k_in >= dec!("0.001"), "Invalid k_in value");
+            assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
+            assert!(config.k_out == dec!(1) || config.k_out < dec!("0.999"), "Invalid k_out value");
+            assert!(config.fee >= dec!(0) && config.fee < dec!(1), "Invalid fee level");
+
             let base_manager = ResourceManager::from(base_token);
             let quote_manager = ResourceManager::from(quote_token);
-            assert!(base_manager.resource_type().is_fungible(), "non-fungible base token detected");
-            assert!(quote_manager.resource_type().is_fungible(), "non-fungible quote token detected");
+            assert!(base_manager.resource_type().is_fungible(), "Non-fungible base token detected");
+            assert!(quote_manager.resource_type().is_fungible(), "Non-fungible quote token detected");
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
@@ -122,11 +132,7 @@ mod plazapair {
             // Instantiate a PlazaPair component
             let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             Self {
-                config: PairConfig {
-                    k_in: dec!("0.4"),
-                    k_out: dec!("1"),
-                    fee: dec!("0.003"),
-                },
+                config: config,
                 state: PairState {
                     p0: initial_price,
                     base_target: dec!(0),

@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+// use crate::pair::PairConfig;
 use crate::pair::plazapair::PlazaPair;
 
 #[blueprint]
@@ -38,6 +39,11 @@ mod plazadex {
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
+            // let config = PairConfig {
+            //     k_in: dec!("0.4"),
+            //     k_out: dec!("1"),
+            //     fee: dec!("0.003"),
+            // };
             let pair = PlazaPair::instantiate_pair(token, self.dfp2, p0);
             let (lp_base, lp_quote) = pair.get_lp_tokens();
 
