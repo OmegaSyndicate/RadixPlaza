@@ -409,10 +409,12 @@ mod plazapair {
             // Handle the trading away from equilbrium case
             if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
                 debug!("  Trade on outgoing curve");
-                // Calibrate outgoing price curve to incoming at spot price.
-                let virtual_p_ref = calc_p0_from_spot(last_spot, output_target, output_actual, self.config.k_out);
+                // Calibrate outgoing price curve to filtered spot price.
+                let incoming_spot = calc_spot(p_ref, output_target, output_actual, self.config.k_in);
+                let outgoing_spot = factor * last_spot + (dec!(1) - factor) * incoming_spot;
+                let virtual_p_ref = calc_p0_from_spot(outgoing_spot, output_target, output_actual, self.config.k_out);
 
-                debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
+                debug!("  Skew factor: {}, last_spot: {} p_ref: {}", factor, last_spot, p_ref);                
                 debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
                 // Calculate output amount based on outgoing curve
                 let outgoing_output = calc_outgoing(
