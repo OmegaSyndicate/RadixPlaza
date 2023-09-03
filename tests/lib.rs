@@ -275,7 +275,7 @@ mod plazapair_tests {
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
-        assert_eq!(base_amount, dec!("999498.562242477213135436"));
+        assert_eq!(base_amount, dec!("999498.562242477213135301"));
         assert_eq!(quote_amount, dec!(997_000));
     }
 
@@ -299,7 +299,7 @@ mod plazapair_tests {
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
         assert_eq!(base_amount, dec!(998_500));
-        assert_eq!(quote_amount, dec!("999498.562242477213135685"));
+        assert_eq!(quote_amount, dec!("999498.56224247721313555"));
     }
 
     #[test]
@@ -327,7 +327,7 @@ mod plazapair_tests {
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
-        assert_eq!(base_amount, dec!("999498.566682382973175074"));
+        assert_eq!(base_amount, dec!("999498.566682382973174966"));
         assert_eq!(quote_amount, dec!(997_000));
     }
 
@@ -357,7 +357,7 @@ mod plazapair_tests {
         let quote_amount = test_engine.current_balance("quote");
         // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
         assert_eq!(base_amount, dec!(998_500));
-        assert_eq!(quote_amount, dec!("999498.566682382973175408"));
+        assert_eq!(quote_amount, dec!("999498.566682382973175122"));
     }
 
     #[test]
@@ -424,8 +424,8 @@ mod plazapair_tests {
         save_receipt_to_file("swap_incoming.txt", &_receipt);
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
-        // Slightly higher return from doing it in 2 steps as your own fees are now part of the liquidity   
+        // Net result of trades more base tokens for LPs  
         assert_eq!(base_amount, dec!("999045.45935509283981328"));
-        assert_eq!(quote_amount, dec!("999498.562242477213135186"));
+        assert_eq!(quote_amount, dec!("998832.333333333333333334"));
     }
 }

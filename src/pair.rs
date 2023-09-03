@@ -1,5 +1,5 @@
 use scrypto::prelude::*;
-use crate::plaza_events::*;
+use crate::events::*;
 
 #[derive(ScryptoSbor, Copy, Clone, PartialEq)]
 pub enum Shortage {
@@ -327,12 +327,12 @@ mod plazapair {
             let new_p0 = match self.state.shortage {
                 Shortage::BaseShortage => {
                     let quote_surplus = quote_actual - self.state.quote_target;
-                    self.calc_p0_from_surplus(quote_surplus, self.config.k_in, self.state.base_target, base_actual)
+                    self.calc_p0_from_surplus(quote_surplus, self.state.base_target, base_actual, self.config.k_in)
                 }
                 Shortage::Equilibrium => self.state.p0,
                 Shortage::QuoteShortage => {
                     let base_surplus = base_actual - self.state.base_target;
-                    dec!(1) / self.calc_p0_from_surplus(base_surplus, self.config.k_in, self.state.quote_target, quote_actual)
+                    dec!(1) / self.calc_p0_from_surplus(base_surplus, self.state.quote_target, quote_actual, self.config.k_in)
                 }
             };
             let p0 = factor * self.state.p0 + (dec!(1) - factor) * new_p0;
@@ -369,7 +369,7 @@ mod plazapair {
             // Handle the incoming case (trading towards equilibrium)
             if new_state.shortage == in_input_shortage {
                 let surplus = output_actual - output_target;
-                let adjusted_target = self.calc_target(p_ref, self.config.k_in, input_actual, surplus);
+                let adjusted_target = self.calc_target(p_ref, input_actual, surplus, self.config.k_in);
                 let shortfall = adjusted_target - input_actual;
                 let leg_amount = std::cmp::min(amount_to_trade, shortfall);
                 debug!("  Input shortage of {} detected.", shortfall);
@@ -380,6 +380,7 @@ mod plazapair {
                     adjusted_target,
                     input_actual,
                     p_ref,
+                    self.config.k_in,
                 );
 
                 new_state.set_input_target(adjusted_target, input_is_quote);
@@ -397,9 +398,9 @@ mod plazapair {
                     new_state.shortage = Shortage::Equilibrium;
                 } else {
                     new_state.last_spot = match new_state.shortage {
-                        Shortage::BaseShortage => self.calc_spot(p_ref, self.config.k_in, adjusted_target, input_actual + leg_amount),
+                        Shortage::BaseShortage => self.calc_spot(p_ref, adjusted_target, input_actual + leg_amount, self.config.k_in),
                         Shortage::Equilibrium => p0,
-                        Shortage::QuoteShortage => { dec!(1) / self.calc_spot(p_ref, self.config.k_in, adjusted_target, input_actual + leg_amount) }, 
+                        Shortage::QuoteShortage => { dec!(1) / self.calc_spot(p_ref, adjusted_target, input_actual + leg_amount, self.config.k_in) }, 
                     };
                 }
             }
@@ -408,7 +409,7 @@ mod plazapair {
             if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
                 debug!("  Trade on outgoing curve");
                 // Calibrate outgoing price curve to incoming at spot price.
-                let virtual_p_ref = self.calc_p0_from_spot(last_spot, self.config.k_out, output_target, output_actual);
+                let virtual_p_ref = self.calc_p0_from_spot(last_spot, output_target, output_actual, self.config.k_out);
 
                 debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
                 debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
@@ -418,6 +419,7 @@ mod plazapair {
                     output_target,
                     output_actual,
                     virtual_p_ref,
+                    self.config.k_out,
                 );
                 output_amount += outgoing_output;
 
@@ -440,9 +442,9 @@ mod plazapair {
                 // Calculate and store previous outgoing spot price
                 let new_actual = output_actual - outgoing_output;
                 new_state.last_spot = match new_state.shortage {
-                    Shortage::BaseShortage => self.calc_spot(virtual_p_ref, self.config.k_out, output_target, new_actual),
+                    Shortage::BaseShortage => self.calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out),
                     Shortage::Equilibrium => p0,
-                    Shortage::QuoteShortage => dec!(1) / self.calc_spot(virtual_p_ref, self.config.k_out, output_target, new_actual), 
+                    Shortage::QuoteShortage => dec!(1) / self.calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out), 
                 };
             }
 
@@ -455,14 +457,14 @@ mod plazapair {
         }
 
         // Calculate target amount from curve
-        fn calc_target(&self, p0: Decimal, k: Decimal, actual: Decimal, surplus: Decimal) -> Decimal {
+        fn calc_target(&self, p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
             let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
             let num = (dec!(2) * k - 1 + radicand.sqrt().unwrap()) * actual;
             num / k / dec!(2)
         }
 
         // Calculate spot price from curve
-        fn calc_spot(&self, p0: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+        fn calc_spot(&self, p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
             let target2 = target * target;
             let actual2 = actual * actual;
 
@@ -471,7 +473,7 @@ mod plazapair {
         }
 
         // Calculate equilibrium price from shortage and spot price
-        fn calc_p0_from_spot(&self, p_spot: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+        fn calc_p0_from_spot(&self, p_spot: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
             let target2 = target * target;
             let actual2 = actual * actual;
 
@@ -480,7 +482,7 @@ mod plazapair {
         }
 
         // Calculate at what price incoming trades reach equilibrium following the curve
-        fn calc_p0_from_surplus(&self, surplus: Decimal, k: Decimal, target: Decimal, actual: Decimal) -> Decimal {
+        fn calc_p0_from_surplus(&self, surplus: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
             // Calculate the shortage of tokens
             let shortage = target - actual;
 
@@ -495,55 +497,60 @@ mod plazapair {
             target: Decimal,
             actual: Decimal,
             p_ref: Decimal,
+            k_in: Decimal,
         ) -> Decimal {
             // Ensure the sum of the actual and input amounts does not exceed the target
             assert!(actual + input_amount <= target, "Infeasible amount");
             
             // Calculate the existing surplus as per AMM curve
-            let surplus_before = (target - actual) * p_ref * (dec!(1) + self.config.k_in * (target - actual) / actual);
+            let surplus_before = (target - actual) * p_ref * (dec!(1) + k_in * (target - actual) / actual);
 
             // Calculate the new surplus as per the AMM curve
             let actual_after = actual + input_amount;
-            let surplus_after = (target - actual_after) * p_ref * (dec!(1) + self.config.k_in * (target - actual_after) / actual_after);
+            let surplus_after = (target - actual_after) * p_ref * (dec!(1) + k_in * (target - actual_after) / actual_after);
 
             // The difference is the output amount
             surplus_before - surplus_after
         }
 
-        // Calculate the outgoing amount of output tokens given input_amount, surplus, target, actual, and p_ref
+        // Calculate the amount of output tokens given input amount and current place on curve
         fn calc_outgoing(
             &self,
             input_amount: Decimal,
             target: Decimal,
             actual: Decimal,
             p_ref: Decimal,
+            k_out: Decimal,
         ) -> Decimal {
-            // Calculate current shortage
-            let shortage_before = target - actual;
+            // Calculate current shortfall of tokens
+            let shortfall = target - actual;
 
-            // Calculate scaled surplus and input amount using p_ref and trading curve
-            let scaled_surplus_before = shortage_before * (dec!(1) + self.config.k_out * shortage_before / actual) * p_ref;
-            let scaled_surplus_after = (scaled_surplus_before + input_amount) / p_ref;
+            // Calculate how many tokens should be in surplus according to the curve
+            let surplus = shortfall / actual * (actual + k_out * shortfall) * p_ref;
+            let scaled_new_surplus = (surplus + input_amount) / p_ref;
 
-            // Check if the egress price curve exponent (k_out) is 1
-            if self.config.k_out == dec!(1) {
-                // Calculate the shortage before and after the operation
-                let shortage_after = target * scaled_surplus_after / (target + scaled_surplus_after);
+            // Special case for k_out equal to 1 (constant product)
+            if k_out == dec!(1) {
+                let new_shortfall = scaled_new_surplus * target / (target + scaled_new_surplus);
 
-                // Calculate and return the difference in shortage
-                shortage_after - shortage_before
+                // Calculate and return the difference in shortfall
+                new_shortfall - shortfall
             } else {
                 // Handle other values for k_out
-                let shortage_after = target + scaled_surplus_after
-                    - Decimal::sqrt(
-                        &(target * target
-                        + (dec!(4) * self.config.k_out - dec!(2)) * target * scaled_surplus_after
-                        + scaled_surplus_after * scaled_surplus_after)
-                    ).unwrap();
+                let new_shortfall =
+                    (
+                        target + scaled_new_surplus -
+                        (
+                            target * target
+                            + (dec!(4) * k_out - dec!(2)) * target * scaled_new_surplus
+                            + scaled_new_surplus * scaled_new_surplus
+                        ).sqrt().unwrap()
+                    )
+                    / dec!(2)
+                    / (dec!(1) - k_out);
 
-                // Calculate and return the difference in shortage
-                // TODO: fix shortage_before scaling
-                (shortage_after - shortage_before) / dec!(2) / (dec!(1) - self.config.k_out)
+                // Calculate and return the difference in shortfall
+                new_shortfall - shortfall
             }
         }
     }

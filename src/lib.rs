@@ -1,3 +1,3 @@
-mod plaza_dex;
-mod plaza_pair;
-mod plaza_events;
+mod dex;
+mod pair;
+mod events;

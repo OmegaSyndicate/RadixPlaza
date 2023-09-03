@@ -1,5 +1,5 @@
 use scrypto::prelude::*;
-use crate::plaza_pair::plazapair::PlazaPair;
+use crate::pair::plazapair::PlazaPair;
 
 #[blueprint]
 mod plazadex {
