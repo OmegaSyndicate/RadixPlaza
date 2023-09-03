@@ -4,7 +4,7 @@ use crate::helpers::*;
 use crate::types::*;
 
 #[blueprint]
-#[events(SwapEvent)]
+#[events(SwapEvent, AddLiquidityEvent)]
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
@@ -103,10 +103,17 @@ mod plazapair {
 
         // Add liquidity to the pool in return for LP tokens
         pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
-            assert!(input_bucket.amount() > dec!(0), "Empty bucket provided");
+            let token_amount = input_bucket.amount();
+            assert!(token_amount > dec!(0), "Empty bucket provided");
         
             // Determine if the bucket is for the quote or the base pool
             let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
+            if !is_quote {
+                assert!(
+                    input_bucket.resource_address() == self.base_vault.resource_address(),
+                    "Invalid bucket"
+                );
+            }
         
             // Based on the bucket type, choose the correct vault, target and resource address
             let (vault, target_value, lp_manager) = if is_quote {
@@ -119,18 +126,21 @@ mod plazapair {
             let lp_outstanding = lp_manager.total_supply().unwrap();
         
             // Calculate the new LP amount
-            let new_lp_value = if lp_outstanding == dec!(0) { 
-                input_bucket.amount()
+            let lp_amount = if lp_outstanding == dec!(0) { 
+                token_amount
             } else {
-                input_bucket.amount() / *target_value * lp_outstanding
+                token_amount / *target_value * lp_outstanding
             };
         
             // Update target field and take in liquidity
-            *target_value += input_bucket.amount();
+            *target_value += token_amount;
             vault.put(input_bucket);
 
+            // Emit add liquidity event
+            Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount, lp_amount});
+
             // Mint the new LP tokens
-            lp_manager.mint(new_lp_value)
+            lp_manager.mint(lp_amount)
         }
 
         // Exchange LP tokens for the underlying liquidity held in the pair
