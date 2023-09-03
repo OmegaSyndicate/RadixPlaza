@@ -261,19 +261,17 @@ mod plazapair {
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
 
             // Set the input and output vaults and targets based on input_tokens type
-            let (input_actual, mut output_actual, input_target, mut output_target) =
+            let (input_actual, mut output_actual, mut output_target) =
                 if input_is_quote {
                     (
                         quote_actual,
                         base_actual,
-                        self.state.quote_target,
                         self.state.base_target,
                     )
                 } else {
                     (
                         base_actual,
                         quote_actual,
-                        self.state.base_target,
                         self.state.quote_target,
                     )
                 };            
@@ -329,7 +327,7 @@ mod plazapair {
                 let leg_amount = std::cmp::min(amount_to_trade, shortfall);
                 debug!("  Input shortage of {} detected.", shortfall);
                 debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, target: {}, adj_target {}, actual {}", leg_amount, input_target, adjusted_target, input_actual);
+                debug!("  Amount: {}, adj_target: {}, actual: {}", leg_amount, adjusted_target, input_actual);
                 output_amount = calc_incoming(
                     leg_amount,
                     adjusted_target,
