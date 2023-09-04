@@ -363,12 +363,6 @@ mod plazapair {
                     new_state.set_output_target(output_target, input_is_quote);
                     new_state.last_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
-                } else {
-                    new_state.last_spot = match new_state.shortage {
-                        Shortage::BaseShortage => calc_spot(p_ref, adjusted_target, input_actual + leg_amount, self.config.k_in),
-                        Shortage::Equilibrium => p0,
-                        Shortage::QuoteShortage => { dec!(1) / calc_spot(p_ref, adjusted_target, input_actual + leg_amount, self.config.k_in) }, 
-                    };
                 }
             }
 

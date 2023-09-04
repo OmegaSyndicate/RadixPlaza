@@ -2,6 +2,11 @@ use scrypto::prelude::*;
 
 // Calculate target amount from curve
 pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
+    assert!(p0 > dec!(0), "Invalid p0");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(surplus >= dec!(0), "Invalid surplus amount");
+    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+
     let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
     let num = (dec!(2) * k - 1 + radicand.sqrt().unwrap()) * actual;
     num / k / dec!(2)
@@ -9,6 +14,11 @@ pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -
 
 // Calculate spot price from curve
 pub fn calc_spot(p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+    assert!(p0 > dec!(0), "Invalid p0");
+    assert!(target >= actual, "Invalid target reserves");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+
     let target2 = target * target;
     let actual2 = actual * actual;
 
@@ -18,6 +28,11 @@ pub fn calc_spot(p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> D
 
 // Calculate equilibrium price from shortage and spot price
 pub fn calc_p0_from_spot(p_spot: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+    assert!(p_spot > dec!(0), "Invalid p_spot");
+    assert!(target >= actual, "Invalid target reserves");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+
     let target2 = target * target;
     let actual2 = actual * actual;
 
@@ -27,6 +42,11 @@ pub fn calc_p0_from_spot(p_spot: Decimal, target: Decimal, actual: Decimal, k: D
 
 // Calculate at what price incoming trades reach equilibrium following the curve
 pub fn calc_p0_from_surplus(surplus: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+    assert!(surplus > dec!(0), "Invalid surplus");
+    assert!(target >= actual, "Invalid target reserves");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+
     // Calculate the shortage of tokens
     let shortage = target - actual;
 
@@ -39,18 +59,21 @@ pub fn calc_incoming(
     input_amount: Decimal,
     target: Decimal,
     actual: Decimal,
-    p_ref: Decimal,
+    p0: Decimal,
     k_in: Decimal,
 ) -> Decimal {
     // Ensure the sum of the actual and input amounts does not exceed the target
-    assert!(actual + input_amount <= target, "Infeasible amount");
+    assert!(input_amount > dec!(0), "Invalid input amount");
+    assert!(target > actual, "Invalid target reserves");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(p0 > dec!(0), "Invalid reference price");
+    assert!(k_in >= dec!("0.001") && k_in <= dec!(1), "Invalid k_in");
+    assert!(actual + input_amount <= target, "Infeasible combination");
     
-    // Calculate the existing surplus as per AMM curve
-    let surplus_before = (target - actual) * p_ref * (dec!(1) + k_in * (target - actual) / actual);
-
-    // Calculate the new surplus as per the AMM curve
+    // Calculate the expected surplus values
     let actual_after = actual + input_amount;
-    let surplus_after = (target - actual_after) * p_ref * (dec!(1) + k_in * (target - actual_after) / actual_after);
+    let surplus_before = (target - actual) * p0 * (dec!(1) + k_in * (target - actual) / actual);
+    let surplus_after = (target - actual_after) * p0 * (dec!(1) + k_in * (target - actual_after) / actual_after);
 
     // The difference is the output amount
     surplus_before - surplus_after
@@ -64,6 +87,12 @@ pub fn calc_outgoing(
     p_ref: Decimal,
     k_out: Decimal,
 ) -> Decimal {
+    assert!(input_amount > dec!(0), "Invalid input amount");
+    assert!(target >= actual, "Invalid target reserves");
+    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(p_ref > dec!(0), "Invalid reference price");
+    assert!(k_out >= dec!("0.001") && k_out <= dec!(1), "Invalid k_in");
+
     // Calculate current shortfall of tokens
     let shortfall = target - actual;
 
