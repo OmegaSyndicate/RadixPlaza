@@ -275,17 +275,19 @@ mod plazapair {
             let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
 
             // Set the input and output vaults and targets based on input_tokens type
-            let (input_actual, mut output_actual, mut output_target) =
+            let (input_actual, mut output_actual, input_target, mut output_target) =
                 if input_is_quote {
                     (
                         quote_actual,
                         base_actual,
+                        self.state.quote_target,
                         self.state.base_target,
                     )
                 } else {
                     (
                         base_actual,
                         quote_actual,
+                        self.state.base_target,
                         self.state.quote_target,
                     )
                 };            
@@ -350,7 +352,6 @@ mod plazapair {
                     self.config.k_in,
                 );
 
-                new_state.set_input_target(adjusted_target, input_is_quote);
                 if amount_to_trade >= shortfall {
                     debug!("  Trading to/past equilibrium. First leg {}", output_amount);
                     amount_to_trade -= shortfall;
@@ -363,6 +364,11 @@ mod plazapair {
                     new_state.set_output_target(output_target, input_is_quote);
                     new_state.last_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
+                } else {
+                    let new_input_actual = input_actual + amount_to_trade;
+                    if new_input_actual > input_target {
+                        new_state.set_input_target(new_input_actual, input_is_quote);
+                    }
                 }
             }
 
