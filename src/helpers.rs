@@ -8,7 +8,7 @@ pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -
     assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
 
     let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
-    let num = (dec!(2) * k - 1 + radicand.sqrt().unwrap()) * actual;
+    let num = (dec!(2) * k - 1 + radicand.checked_sqrt().unwrap()) * actual;
     num / k / dec!(2)
 }
 
@@ -115,7 +115,7 @@ pub fn calc_outgoing(
                     target * target
                     + (dec!(4) * k_out - dec!(2)) * target * scaled_new_surplus
                     + scaled_new_surplus * scaled_new_surplus
-                ).sqrt().unwrap()
+                ).checked_sqrt().unwrap()
             )
             / dec!(2)
             / (dec!(1) - k_out);

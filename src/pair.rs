@@ -39,7 +39,7 @@ mod plazapair {
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
-                Runtime::allocate_component_address(Runtime::blueprint_id());
+                Runtime::allocate_component_address(PlazaPair::blueprint_id());
 
             // Create LP tokens for the base token providers
             let base_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
@@ -293,7 +293,7 @@ mod plazapair {
             debug!("  delta_t: {} -- last_trade {}", delta_t, self.state.last_trade);
 
             // Compute decay factor with a 15 minute time constant
-            let factor = Decimal::powi(&dec!("0.9355"), delta_t / 60);
+            let factor = Decimal::checked_powi(&dec!("0.9355"), delta_t / 60).unwrap();
             debug!("  old-new p0 skew factor {}", factor);
 
             // Collect current actual balances
