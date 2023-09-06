@@ -116,30 +116,55 @@ mod plazapair {
             }
         
             // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, target_value, lp_manager) = if is_quote {
-                (&mut self.quote_vault, &mut self.state.quote_target, self.quote_lp)
+            let (vault, other_vault, target_amount, other_target, lp_manager) = if is_quote {
+                (
+                    &mut self.quote_vault,
+                    &self.base_vault,
+                    &mut self.state.quote_target,
+                    self.state.base_target,
+                    self.quote_lp
+                )
             } else {
-                (&mut self.base_vault, &mut self.state.base_target, self.base_lp)
+                (
+                    &mut self.base_vault,
+                    &self.quote_vault,
+                    &mut self.state.base_target,
+                    self.state.quote_target,
+                    self.base_lp
+                )
             };
-        
+            let (actual_amount, other_amount) = ((*vault).amount(), (*other_vault).amount());
+            
             // Check amount of outstanding LP tokens
             let lp_outstanding = lp_manager.total_supply().unwrap();
         
             // Calculate the new LP amount
-            let lp_amount = if lp_outstanding == dec!(0) { 
-                token_amount
-            } else {
-                token_amount / *target_value * lp_outstanding
+            let (new_target, lp_amount) = match (lp_outstanding == dec!(0), actual_amount < *target_amount) {
+                (true,_) => (token_amount, token_amount),
+                // If the token being added is in shortage, we need to issue LP tokens in ratio with
+                // the increase in target amount that keeps the trading curve anchored to the right
+                // value of p0. Note that we assume the low-pass filter to be at steady state as that
+                // is the conservative approach when issuing new LP tokens.
+               (_,true) => {
+                    let k = self.config.k_in;
+                    let surplus = other_amount - other_target;
+                    let p0 = calc_p0_from_surplus(surplus, *target_amount, actual_amount, k);
+                    let current_target = calc_target(p0, actual_amount, surplus, k);
+                    let new_target = calc_target(p0, actual_amount + token_amount, surplus, k);
+                    (new_target, (new_target - current_target) / current_target * lp_outstanding)
+                }
+                // If this token is not in shortage we can simply issue in ratio with existing amount
+                (_,_) => {
+                    (*target_amount + token_amount, token_amount / *target_amount * lp_outstanding)
+                }
             };
         
-            // Update target field and take in liquidity
-            *target_value += token_amount;
-            vault.put(input_bucket);
-
             // Emit add liquidity event
             Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount, lp_amount});
 
-            // Mint the new LP tokens
+            // Take in liquidity, update target and mint the new LP tokens
+            vault.put(input_bucket);
+            *target_amount = new_target;
             lp_manager.mint(lp_amount)
         }
 
@@ -335,36 +360,46 @@ mod plazapair {
             let mut amount_to_trade = input_amount;
             let mut output_amount = dec!(0);
 
-            // Handle the incoming case (trading towards equilibrium)
+            // Handle the incoming case (trading towards equilibrium). We project the current reserves on the
+            // incoming curve by calculating a adjusted target value to reach equilibrium and spend all surplus
+            // counter tokens. If we go past equilibrium, we update state accordingly. Note that we ignore the
+            // stored target value to elegantly deal with the excess tokens from earlier from the sparser
+            // liquidity on the curve trading away from equilibrium.
             if new_state.shortage == in_input_shortage {
                 let surplus = output_actual - output_target;
                 let adjusted_target = calc_target(p_ref, input_actual, surplus, self.config.k_in);
                 let shortfall = adjusted_target - input_actual;
-                let leg_amount = std::cmp::min(amount_to_trade, shortfall);
                 debug!("  Input shortage of {} detected.", shortfall);
                 debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, adj_target: {}, actual: {}", leg_amount, adjusted_target, input_actual);
-                output_amount = calc_incoming(
-                    leg_amount,
-                    adjusted_target,
-                    input_actual,
-                    p_ref,
-                    self.config.k_in,
-                );
+                debug!("  Amount: {}, adj_target: {}, actual: {}", input_amount, adjusted_target, input_actual);
 
+                // If we add more than required to reach equilibrium, we reset to equilibrium and continue the
+                // trade on the outgoing curve below.
                 if amount_to_trade >= shortfall {
-                    debug!("  Trading to/past equilibrium. First leg {}", output_amount);
+                    debug!("  Trading to/past equilibrium. Leg input: {} -- output: {}", shortfall, surplus);
+                    output_amount = surplus;
                     amount_to_trade -= shortfall;
                     output_target = output_actual - output_amount;
                     output_actual = output_target;
                     p_ref = dec!(1) / p_ref;    
                     last_spot = p_ref;
                     
-                    // Update state variables
+                    // Update state variables to match equilibrium values
+                    new_state.set_input_target(adjusted_target, input_is_quote);
                     new_state.set_output_target(output_target, input_is_quote);
                     new_state.last_spot = p0;
                     new_state.shortage = Shortage::Equilibrium;
                 } else {
+                    // If we stay in the same shortage situation, we calculate according to the incoming curve.
+                    output_amount = calc_incoming(
+                        input_amount,
+                        adjusted_target,
+                        input_actual,
+                        p_ref,
+                        self.config.k_in,
+                    );
+
+                    // Prevent actual value from being more than the stored target value
                     let new_input_actual = input_actual + amount_to_trade;
                     if new_input_actual > input_target {
                         new_state.set_input_target(new_input_actual, input_is_quote);

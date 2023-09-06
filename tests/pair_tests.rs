@@ -424,7 +424,7 @@ mod plazapair_tests {
         let base_amount = test_engine.current_balance("base");
         let quote_amount = test_engine.current_balance("quote");
         // Net result of trades more base tokens for LPs  
-        assert_eq!(base_amount, dec!("999045.45935509283981328"));
+        assert_eq!(base_amount, dec!("999045.459355092839813726"));
         assert_eq!(quote_amount, dec!("998832.333333333333333334"));
     }
 }
