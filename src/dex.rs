@@ -8,9 +8,9 @@ mod plazadex {
     struct PlazaDex {
         // Pair location for certain token / lp_token
         dfp2: ResourceAddress,
-        token_to_pair: HashMap<ResourceAddress, Global<PlazaPair>>,
-        lp_to_token: HashMap<ResourceAddress, ResourceAddress>,
-        dfp2_reserves: HashMap<ResourceAddress, Vault>,
+        token_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
+        lp_to_token: KeyValueStore<ResourceAddress, ResourceAddress>,
+        dfp2_reserves: KeyValueStore<ResourceAddress, Vault>,
         min_dfp2_liquidity: Decimal,
     }
 
@@ -20,9 +20,9 @@ mod plazadex {
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
-                token_to_pair: HashMap::new(),
-                lp_to_token: HashMap::new(),
-                dfp2_reserves: HashMap::new(),
+                token_to_pair: KeyValueStore::new(),
+                lp_to_token: KeyValueStore::new(),
+                dfp2_reserves: KeyValueStore::new(),
                 min_dfp2_liquidity: dec!(0),
             }
             .instantiate()
@@ -35,7 +35,7 @@ mod plazadex {
             // Ensure all basic criteria are met to add a new pair
             assert!(dfp2.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
             assert!(dfp2.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
-            assert!(self.token_to_pair.contains_key(&token) == false, "Pair already exists");
+            assert!(self.token_to_pair.get(&token).is_some(), "Pair already exists");
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
@@ -81,8 +81,11 @@ mod plazadex {
                 }
                 _ => {
                     // Trade two tokens with a hop through DFP2
-                    let pair1 = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
-                    let dfp2_bucket = pair1.swap(tokens);
+                    let dfp2_bucket;
+                    {
+                        let pair1 = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
+                        dfp2_bucket = pair1.swap(tokens);
+                    }
                     let pair2 = self.token_to_pair.get_mut(&output_token).expect("Output token not listed");
                     pair2.swap(dfp2_bucket)
                 }
