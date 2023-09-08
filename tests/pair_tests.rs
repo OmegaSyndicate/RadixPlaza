@@ -1,4 +1,5 @@
 use defiplaza::pair::test_bindings::*;
+use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
 
@@ -18,9 +19,15 @@ fn deploys() -> Result<(), RuntimeError> {
     let resource_address1 = bucket1.resource_address(&mut env)?; 
     let resource_address2 = bucket2.resource_address(&mut env)?; 
 
+    let config = PairConfig {
+        k_in: dec!("0.4"),
+        k_out: dec!("1"),
+        fee: dec!("0.003"),
+    };
     let mut pair = PlazaPair::instantiate_pair( 
         resource_address1,
         resource_address2,
+        config,
         dec!(1),
         package_address,
         &mut env,

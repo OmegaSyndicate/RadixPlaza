@@ -20,13 +20,14 @@ mod plazapair {
         pub fn instantiate_pair(
             base_token: ResourceAddress,
             quote_token: ResourceAddress,
+            config: PairConfig,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
-            let config = PairConfig {
-                k_in: dec!("0.4"),
-                k_out: dec!("1"),
-                fee: dec!("0.003"),
-            };
+            // let config = PairConfig {
+            //     k_in: dec!("0.4"),
+            //     k_out: dec!("1"),
+            //     fee: dec!("0.003"),
+            // };
             assert!(config.k_in >= dec!("0.001"), "Invalid k_in value");
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
             assert!(config.k_out == dec!(1) || config.k_out < dec!("0.999"), "Invalid k_out value");
