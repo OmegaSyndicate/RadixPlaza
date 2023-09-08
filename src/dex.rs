@@ -124,17 +124,18 @@ mod plazadex {
             assert!(input_token != output_token, "Can't swap token into itself");
 
             match (input_token == self.dfp2, output_token == self.dfp2) {
-                (true, _) => {
+                (true, true) => { Runtime::panic("DFP2 <--> DFP2".to_string()) }
+                (true, false) => {
                     // Sell DFP2 (single pair trade)
                     let pair = self.token_to_pair.get(&output_token).expect("Output token not listed");
                     pair.quote(input_amount, true).0
                 }
-                (_, true) => {
+                (false, true) => {
                     // Buy DFP2 (single pair trade)
                     let pair = self.token_to_pair.get(&input_token).expect("Input token not listed");
                     pair.quote(input_amount, false).0
                 }
-                _ => {
+                (false, false) => {
                     // Trade two tokens with a hop through DFP2
                     let pair1 = self.token_to_pair.get(&input_token).expect("Input token not listed");
                     let dfp2_amount = pair1.quote(input_amount, false).0;
