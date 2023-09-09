@@ -8,6 +8,7 @@ mod plazadex {
     struct PlazaDex {
         // Pair location for certain token / lp_token
         dfp2: ResourceAddress,
+        blacklist: HashSet<ResourceAddress>,
         token_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
         lp_to_token: KeyValueStore<ResourceAddress, ResourceAddress>,
         dfp2_reserves: KeyValueStore<ResourceAddress, Vault>,
@@ -20,6 +21,7 @@ mod plazadex {
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
+                blacklist: HashSet::new(),
                 token_to_pair: KeyValueStore::new(),
                 lp_to_token: KeyValueStore::new(),
                 dfp2_reserves: KeyValueStore::new(),
@@ -31,19 +33,15 @@ mod plazadex {
         }
 
         // Create a new liquidity pair on the exchange
-        pub fn create_pair(&mut self, token: ResourceAddress, dfp2: Bucket, p0: Decimal) -> Global<PlazaPair> {
+        pub fn create_pair(&mut self, token: ResourceAddress, dfp2: Bucket, config: PairConfig, p0: Decimal) -> Global<PlazaPair> {
             // Ensure all basic criteria are met to add a new pair
+            assert!(!self.blacklist.contains(&token), "Token is blacklisted");
             assert!(dfp2.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
             assert!(dfp2.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
             assert!(self.token_to_pair.get(&token).is_some(), "Pair already exists");
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
-            let config = PairConfig {
-                k_in: dec!("0.4"),
-                k_out: dec!("1"),
-                fee: dec!("0.003"),
-            };
             let pair = PlazaPair::instantiate_pair(token, self.dfp2, config, p0);
             let (lp_base, lp_quote) = pair.get_lp_tokens();
 
@@ -148,6 +146,31 @@ mod plazadex {
         pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
             let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
             pair.get_lp_tokens()
-        } 
+        }
+
+        // TODO: add auth
+        pub fn delist(&mut self, base_token: ResourceAddress) {
+            let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
+            let (base_lp, quote_lp) = pair.get_lp_tokens();
+            
+            self.lp_to_token.remove(&base_lp);
+            self.lp_to_token.remove(&quote_lp);
+            self.token_to_pair.remove(&base_token);
+        }
+
+        // TODO: add auth
+        pub fn blacklist(&mut self, token: ResourceAddress) {
+            assert!(!self.blacklist.contains(&token), "Token already blacklisted");
+            if self.token_to_pair.get(&token).is_some() {
+                self.delist(token);
+            }
+            self.blacklist.insert(token);
+        }
+
+        // TODO: add auth
+        pub fn deblacklist(&mut self, token: ResourceAddress) {
+            assert!(self.blacklist.contains(&token), "Token not blacklisted");
+            self.blacklist.remove(&token);
+        }
    }
 }
