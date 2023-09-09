@@ -1,8 +1,10 @@
 use scrypto::prelude::*;
+use crate::events::*;
 use crate::types::PairConfig;
 use crate::pair::plazapair::PlazaPair;
 
 #[blueprint]
+#[events(PairCreated, TokenDeListed, TokenBlacklisted, TokenDeBlacklisted)]
 mod plazadex {
     // PlazaDex is the DefiPlaza decentralized exchange on Radix
     struct PlazaDex {
@@ -55,6 +57,8 @@ mod plazadex {
                 let dfp2_vault = Vault::with_bucket(lp_tokens);
                 self.dfp2_reserves.insert(token, dfp2_vault);
             }
+
+            Runtime::emit_event(PairCreated{base_token: token, config, p0, component: pair});
 
             pair
         }
@@ -156,6 +160,8 @@ mod plazadex {
             self.lp_to_token.remove(&base_lp);
             self.lp_to_token.remove(&quote_lp);
             self.token_to_pair.remove(&base_token);
+
+            Runtime::emit_event(TokenDeListed{base_token, component: *pair});
         }
 
         // TODO: add auth
@@ -165,12 +171,16 @@ mod plazadex {
                 self.delist(token);
             }
             self.blacklist.insert(token);
+
+            Runtime::emit_event(TokenBlacklisted{token});
         }
 
         // TODO: add auth
         pub fn deblacklist(&mut self, token: ResourceAddress) {
             assert!(self.blacklist.contains(&token), "Token not blacklisted");
             self.blacklist.remove(&token);
+
+            Runtime::emit_event(TokenDeBlacklisted{token});
         }
    }
 }

@@ -36,7 +36,7 @@ impl PairState {
     }
 }
 
-#[derive(ScryptoSbor)]
+#[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairConfig {
     pub k_in: Decimal,              // Ingress price curve exponent
     pub k_out: Decimal,             // Egress price curve exponent
