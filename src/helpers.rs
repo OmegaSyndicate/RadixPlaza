@@ -1,6 +1,10 @@
 use scrypto::prelude::*;
 
-// Calculate target amount from curve
+// Calculate total amount of tokens in the pool at equilibrium when trading along the curve.
+// Solves the corresponding quadratic equation explicitly.
+// For well-formed input (all variables positive, 0<k<=1) the square root exists.
+// Should not panic for any realistic input combination passing the assertions
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
     assert!(p0 > dec!(0), "Invalid p0");
     assert!(actual > dec!(0), "Invalid actual reserves");
@@ -12,7 +16,9 @@ pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -
     num / k / dec!(2)
 }
 
-// Calculate spot price from curve
+// Calculate spot price for tokens (disregarding fee) when trading on the curve.
+// Direct implementation of the Dodo price curve equation.
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_spot(p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
     assert!(p0 > dec!(0), "Invalid p0");
     assert!(target >= actual, "Invalid target reserves");
@@ -26,7 +32,9 @@ pub fn calc_spot(p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> D
     num / actual2 * p0
 }
 
-// Calculate equilibrium price from shortage and spot price
+// Calculate equilibrium price from trading curve and known spot price.
+// Based on direct implementation of Dodo spot price curve, rearranged to solve for p0.
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_p0_from_spot(p_spot: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
     assert!(p_spot > dec!(0), "Invalid p_spot");
     assert!(target >= actual, "Invalid target reserves");
@@ -40,7 +48,9 @@ pub fn calc_p0_from_spot(p_spot: Decimal, target: Decimal, actual: Decimal, k: D
     actual2 / den * p_spot
 }
 
-// Calculate at what price incoming trades reach equilibrium following the curve
+// Calculate equilibrium price with the rest of the trading curve parameters given.
+// Rearranges the integrated Dodo spot price curve to solve for p0.
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_p0_from_surplus(surplus: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
     assert!(surplus > dec!(0), "Invalid surplus");
     assert!(target >= actual, "Invalid target reserves");
@@ -54,7 +64,9 @@ pub fn calc_p0_from_surplus(surplus: Decimal, target: Decimal, actual: Decimal, 
     surplus / shortage / (dec!(1) + k * shortage / actual)
 }
 
-// Calculate the incoming amount of output tokens given input_amount, target, actual, and p_ref
+// Integrate along the trading curve towards equilibrium to find output corresponding to given input_amount.
+// Works by applying the integrated spot price curve before and after the input_amount is added.
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_incoming(
     input_amount: Decimal,
     target: Decimal,
@@ -79,7 +91,12 @@ pub fn calc_incoming(
     surplus_before - surplus_after
 }
 
-// Calculate the amount of output tokens given input amount and current place on curve
+// Integrate along the trading curve away from equilibrium to find output corresponding to given input_amount.
+// Works by explicit solution of the quadratic equation before and after the input_amount is added.
+// For values of 0<=k<1 the square root exists and the outcome can be proven to be positive
+// When k=1 the quadratic equation breaks down to 0/0 and we have a special (much simpler) solution.
+// When k is very close to 1 we could have overflow, so k is limited to 0.999 or exactly 1 in the constructor.
+// Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_outgoing(
     input_amount: Decimal,
     target: Decimal,
