@@ -6,6 +6,20 @@ use crate::pair::plazapair::PlazaPair;
 #[blueprint]
 #[events(PairCreated, TokenDeListed, TokenBlacklisted, TokenDeBlacklisted)]
 mod plazadex {
+    enable_method_auth! { 
+        methods { 
+            create_pair => PUBLIC;
+            swap => PUBLIC;
+            add_liquidity => PUBLIC;
+            remove_liquidity => PUBLIC;
+            quote => PUBLIC;
+            get_lp_tokens => PUBLIC;
+            delist => restrict_to: [OWNER];
+            blacklist => restrict_to: [OWNER];
+            deblacklist => restrict_to: [OWNER];
+        }
+    }
+
     // PlazaDex is the DefiPlaza decentralized exchange on Radix
     struct PlazaDex {
         // Pair location for certain token / lp_token
@@ -19,7 +33,7 @@ mod plazadex {
 
     impl PlazaDex {
         // Constructor to instantiate and deploy a new pair
-        pub fn instantiate_dex(dfp2_address: ResourceAddress) -> Global<PlazaDex> {
+        pub fn instantiate_dex(dfp2_address: ResourceAddress, owner_badge: ResourceAddress) -> Global<PlazaDex> {
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
@@ -30,7 +44,11 @@ mod plazadex {
                 min_dfp2_liquidity: dec!(0),
             }
             .instantiate()
-            .prepare_to_globalize(OwnerRole::None)
+            .prepare_to_globalize(
+                OwnerRole::Fixed(
+                    rule!(require(owner_badge))
+                )
+            )
             .globalize()
         }
 
@@ -112,7 +130,7 @@ mod plazadex {
             }
         }
 
-        // Remove liquidity
+        // Remove liquidity from the exchange
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             let lp_address = lp_tokens.resource_address();
             let base_address = self.lp_to_token.get(&lp_address).expect("Unknown LP token");
@@ -120,7 +138,7 @@ mod plazadex {
             pair.remove_liquidity(lp_tokens)
         }
 
-        // Get a quote for swapping tokens
+        // Get a quote for swapping two tokens
         pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
             // Verify tokens are all traded at the exchange
             assert!(input_token != output_token, "Can't swap token into itself");
@@ -147,12 +165,14 @@ mod plazadex {
             }            
         }
 
+        // Read only method returning the LP tokens associated with the pair for a given base token.
         pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
             let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
             pair.get_lp_tokens()
         }
 
-        // TODO: add auth
+        // Removes a currently listed token pair. This prevents it from being routed to by the DEX
+        // but it remains available on the ledger to be called directly.
         pub fn delist(&mut self, base_token: ResourceAddress) {
             let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
             let (base_lp, quote_lp) = pair.get_lp_tokens();
@@ -164,7 +184,8 @@ mod plazadex {
             Runtime::emit_event(TokenDeListed{base_token, component: *pair});
         }
 
-        // TODO: add auth
+        // Blacklists a token so it can't be added to the DEX again. Delists the token should it
+        // currently be listed.
         pub fn blacklist(&mut self, token: ResourceAddress) {
             assert!(!self.blacklist.contains(&token), "Token already blacklisted");
             if self.token_to_pair.get(&token).is_some() {
@@ -175,7 +196,7 @@ mod plazadex {
             Runtime::emit_event(TokenBlacklisted{token});
         }
 
-        // TODO: add auth
+        // Removes a token from the blacklist so it can once again be added to the exchange
         pub fn deblacklist(&mut self, token: ResourceAddress) {
             assert!(self.blacklist.contains(&token), "Token not blacklisted");
             self.blacklist.remove(&token);
