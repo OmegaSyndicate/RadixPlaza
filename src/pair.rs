@@ -1,6 +1,5 @@
 use scrypto::prelude::*;
 use crate::events::*;
-use crate::helpers::*;
 use crate::types::*;
 
 #[blueprint]
@@ -23,11 +22,6 @@ mod plazapair {
             config: PairConfig,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
-            // let config = PairConfig {
-            //     k_in: dec!("0.4"),
-            //     k_out: dec!("1"),
-            //     fee: dec!("0.003"),
-            // };
             assert!(config.k_in >= dec!("0.001"), "Invalid k_in value");
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
             assert!(config.k_out == dec!(1) || config.k_out < dec!("0.999"), "Invalid k_out value");
@@ -117,55 +111,29 @@ mod plazapair {
             }
         
             // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, other_vault, target_amount, other_target, lp_manager) = if is_quote {
+            let (vault, target_amount, lp_manager) = if is_quote {
                 (
                     &mut self.quote_vault,
-                    &self.base_vault,
                     &mut self.state.quote_target,
-                    self.state.base_target,
-                    self.quote_lp
+                    self.base_lp,
                 )
             } else {
                 (
                     &mut self.base_vault,
-                    &self.quote_vault,
                     &mut self.state.base_target,
-                    self.state.quote_target,
-                    self.base_lp
+                    self.quote_lp,
                 )
             };
-            let (actual_amount, other_amount) = ((*vault).amount(), (*other_vault).amount());
-            
-            // Check amount of outstanding LP tokens
-            let lp_outstanding = lp_manager.total_supply().unwrap();
-        
-            // Calculate the new LP amount
-            let (new_target, lp_amount) = match (lp_outstanding == dec!(0), actual_amount < *target_amount) {
-                (true,_) => (token_amount, token_amount),
-                // If the token being added is in shortage, we need to issue LP tokens in ratio with
-                // the increase in target amount that keeps the trading curve anchored to the right
-                // value of p0. Note that we assume the low-pass filter to be at steady state as that
-                // is the conservative approach when issuing new LP tokens.
-               (_,true) => {
-                    let k = self.config.k_in;
-                    let surplus = other_amount - other_target;
-                    let p0 = calc_p0_from_surplus(surplus, *target_amount, actual_amount, k);
-                    let current_target = calc_target(p0, actual_amount, surplus, k);
-                    let new_target = calc_target(p0, actual_amount + token_amount, surplus, k);
-                    (new_target, (new_target - current_target) / current_target * lp_outstanding)
-                }
-                // If this token is not in shortage we can simply issue in ratio with existing amount
-                (_,_) => {
-                    (*target_amount + token_amount, token_amount / *target_amount * lp_outstanding)
-                }
-            };
-        
+
+            // Calculate new LP tokens HARDCODED
+            let lp_amount = dec!(1);
+
             // Emit add liquidity event
             Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount, lp_amount});
 
             // Take in liquidity, update target and mint the new LP tokens
             vault.put(input_bucket);
-            *target_amount = new_target;
+            *target_amount = *target_amount + token_amount;
             lp_manager.mint(lp_amount)
         }
 
@@ -249,13 +217,6 @@ mod plazapair {
             };
             Runtime::emit_event(SwapEvent{base_amount, quote_amount});
 
-            let (token_in, token_out) = if is_quote {
-                ("quote", "base")
-            } else {
-                ("base", "quote")
-            };
-            info!("  SWAP: {} {} for {} {}.", input_amount, token_in, output_amount, token_out);
-
             // Update the target values and select the input and output vaults based on input_tokens type.
             let (input_vault, output_vault) = if is_quote {
                 new_state.base_target += fee;
@@ -267,7 +228,6 @@ mod plazapair {
 
             // Adjust pair state variables.
             self.state = new_state;
-            debug!("  p0: {} -- state {}", new_state.p0, new_state.shortage);
 
             // Transfer the tokens.
             input_vault.put(input_tokens);
@@ -281,182 +241,10 @@ mod plazapair {
 
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, PairState) {
-            let mut new_state = self.state;
+            let new_state = self.state;
 
-            // Compute time since previous trade
-            let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-            let delta_t = if t > self.state.last_trade { 
-                t - self.state.last_trade
-            } else { 
-                0
-            };
-            new_state.last_trade = t;
-            debug!("  delta_t: {} -- last_trade {}", delta_t, self.state.last_trade);
-
-            // Compute decay factor with a 15 minute time constant
-            let factor = Decimal::checked_powi(&dec!("0.9355"), delta_t / 60).unwrap();
-            debug!("  old-new p0 skew factor {}", factor);
-
-            // Collect current actual balances
-            let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
-
-            // Set the input and output vaults and targets based on input_tokens type
-            let (input_actual, mut output_actual, input_target, mut output_target) =
-                if input_is_quote {
-                    (
-                        quote_actual,
-                        base_actual,
-                        self.state.quote_target,
-                        self.state.base_target,
-                    )
-                } else {
-                    (
-                        base_actual,
-                        quote_actual,
-                        self.state.base_target,
-                        self.state.quote_target,
-                    )
-                };            
-
-            // Calculate the base[quote] price in equilibrium
-            let new_p0 = match self.state.shortage {
-                Shortage::BaseShortage => {
-                    let quote_surplus = quote_actual - self.state.quote_target;
-                    calc_p0_from_surplus(quote_surplus, self.state.base_target, base_actual, self.config.k_in)
-                }
-                Shortage::Equilibrium => self.state.p0,
-                Shortage::QuoteShortage => {
-                    let base_surplus = base_actual - self.state.base_target;
-                    dec!(1) / calc_p0_from_surplus(base_surplus, self.state.quote_target, quote_actual, self.config.k_in)
-                }
-            };
-            let p0 = factor * self.state.p0 + (dec!(1) - factor) * new_p0;
-            new_state.p0 = p0;
-            debug!("  old_p0: {}, new_p0: {}, skewed_p0: {}", self.state.p0, new_p0, p0);
-
-
-            // Set reference price to B[Q] or Q[B] depending on liquidity
-            let (mut p_ref, mut last_spot) = 
-                match self.state.shortage {
-                    Shortage::BaseShortage => { (p0, self.state.last_spot) },
-                    Shortage::Equilibrium => {
-                        if input_is_quote {
-                            (p0, self.state.last_spot)
-                        } else {
-                            (dec!(1) / p0, dec!(1) / self.state.last_spot)
-                        }
-                    },
-                    Shortage::QuoteShortage => { (dec!(1) / p0, dec!(1) / self.state.last_spot) },
-                };
-            debug!("  p_ref used: {}", p_ref);
-
-            // Determine which state represents input shortage based on input type
-            let in_input_shortage = match input_is_quote {
-                true => Shortage::QuoteShortage,
-                false => Shortage::BaseShortage
-            };
-            debug!("  Input shortage indicated as {}", in_input_shortage);
-
-            // Define running counters
-            let mut amount_to_trade = input_amount;
-            let mut output_amount = dec!(0);
-
-            // Handle the incoming case (trading towards equilibrium). We project the current reserves on the
-            // incoming curve by calculating a adjusted target value to reach equilibrium and spend all surplus
-            // counter tokens. If we go past equilibrium, we update state accordingly. Note that we ignore the
-            // stored target value to elegantly deal with the excess tokens from earlier from the sparser
-            // liquidity on the curve trading away from equilibrium.
-            if new_state.shortage == in_input_shortage {
-                let surplus = output_actual - output_target;
-                let adjusted_target = calc_target(p_ref, input_actual, surplus, self.config.k_in);
-                let shortfall = adjusted_target - input_actual;
-                debug!("  Input shortage of {} detected.", shortfall);
-                debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, adj_target: {}, actual: {}", input_amount, adjusted_target, input_actual);
-
-                // If we add more than required to reach equilibrium, we reset to equilibrium and continue the
-                // trade on the outgoing curve below.
-                if amount_to_trade >= shortfall {
-                    debug!("  Trading to/past equilibrium. Leg input: {} -- output: {}", shortfall, surplus);
-                    output_amount = surplus;
-                    amount_to_trade -= shortfall;
-                    output_target = output_actual - output_amount;
-                    output_actual = output_target;
-                    p_ref = dec!(1) / p_ref;    
-                    last_spot = p_ref;
-                    
-                    // Update state variables to match equilibrium values
-                    new_state.set_input_target(adjusted_target, input_is_quote);
-                    new_state.set_output_target(output_target, input_is_quote);
-                    new_state.last_spot = p0;
-                    new_state.shortage = Shortage::Equilibrium;
-                } else {
-                    // If we stay in the same shortage situation, we calculate according to the incoming curve.
-                    output_amount = calc_incoming(
-                        input_amount,
-                        adjusted_target,
-                        input_actual,
-                        p_ref,
-                        self.config.k_in,
-                    );
-
-                    // Prevent actual value from being more than the stored target value
-                    let new_input_actual = input_actual + amount_to_trade;
-                    if new_input_actual > input_target {
-                        new_state.set_input_target(new_input_actual, input_is_quote);
-                    }
-                }
-            }
-
-            // Handle the trading away from equilbrium case
-            if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
-                debug!("  Trade on outgoing curve");
-                // Calibrate outgoing price curve to filtered spot price.
-                let incoming_spot = calc_spot(p_ref, output_target, output_actual, self.config.k_in);
-                let outgoing_spot = factor * last_spot + (dec!(1) - factor) * incoming_spot;
-                let virtual_p_ref = calc_p0_from_spot(outgoing_spot, output_target, output_actual, self.config.k_out);
-
-                debug!("  Skew factor: {}, last_spot: {} p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
-                // Calculate output amount based on outgoing curve
-                let outgoing_output = calc_outgoing(
-                    amount_to_trade,
-                    output_target,
-                    output_actual,
-                    virtual_p_ref,
-                    self.config.k_out,
-                );
-                output_amount += outgoing_output;
-
-                // Select what the new exchange state should be
-                new_state.shortage = match in_input_shortage {
-                    Shortage::QuoteShortage => Shortage::BaseShortage,
-                    Shortage::BaseShortage => Shortage::QuoteShortage,
-                    Shortage::Equilibrium => {
-                        if input_is_quote {
-                            Shortage::BaseShortage
-                        } else {
-                            Shortage::QuoteShortage
-                        }
-                    }
-                };
-
-                // Store previous outgoing time stamp
-                new_state.last_outgoing = t;
-
-                // Calculate and store previous outgoing spot price
-                let new_actual = output_actual - outgoing_output;
-                new_state.last_spot = match new_state.shortage {
-                    Shortage::BaseShortage => calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out),
-                    Shortage::Equilibrium => p0,
-                    Shortage::QuoteShortage => dec!(1) / calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out), 
-                };
-            }
-
-            debug!("  Last spot: {}", new_state.last_spot);
-
-            // Apply trading fee
-            let fee = self.config.fee * output_amount;
+            let output_amount = dec!(1);
+            let fee = dec!(0);
 
             (output_amount - fee, fee, new_state)
         }

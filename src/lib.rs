@@ -3,4 +3,3 @@ pub mod pair;
 pub mod types;
 
 mod events;
-mod helpers;

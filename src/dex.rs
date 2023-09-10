@@ -40,7 +40,7 @@ mod plazadex {
             assert!(!self.blacklist.contains(&token), "Token is blacklisted");
             assert!(dfp2.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
             assert!(dfp2.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
-            assert!(self.token_to_pair.get(&token).is_some(), "Pair already exists");
+            assert!(self.token_to_pair.get(&token).is_none(), "Pair already exists");
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
