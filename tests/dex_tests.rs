@@ -23,8 +23,13 @@ fn deploys() -> Result<(), RuntimeError> {
     let b_token_address = bucket2.resource_address(&mut env)?; 
     let dfp2_address = bucket3.resource_address(&mut env)?; 
 
+    let admin_badge = ResourceBuilder::new_fungible(OwnerRole::None)
+        .mint_initial_supply(1, &mut env)?;
+    let admin_address = admin_badge.resource_address(&mut env)?;
+
     let mut dex = PlazaDex::instantiate_dex(
         dfp2_address,
+        admin_address,
         package_address,
         &mut env
     )?;
@@ -50,9 +55,9 @@ fn deploys() -> Result<(), RuntimeError> {
     )?;
 
     // Act
-    dex.add_liquidity(bucket1, None, &mut env)?;
-    dex.add_liquidity(bucket2, None, &mut env)?;
-    dex.add_liquidity(bucket3, Some(a_token_address), &mut env)?;
+    let _ = dex.add_liquidity(bucket1, None, &mut env)?;
+    let _ = dex.add_liquidity(bucket2, None, &mut env)?;
+    let _ = dex.add_liquidity(bucket3, Some(a_token_address), &mut env)?;
 
     // Assert
     Ok(())
