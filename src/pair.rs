@@ -126,7 +126,7 @@ mod plazapair {
             };
 
             // Calculate new LP tokens HARDCODED
-            let lp_amount = dec!(1);
+            let lp_amount = token_amount;
 
             // Emit add liquidity event
             Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount, lp_amount});
@@ -243,7 +243,7 @@ mod plazapair {
         pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, PairState) {
             let new_state = self.state;
 
-            let output_amount = dec!(1);
+            let output_amount = input_amount;
             let fee = dec!(0);
 
             (output_amount - fee, fee, new_state)
