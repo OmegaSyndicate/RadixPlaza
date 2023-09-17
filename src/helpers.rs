@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::constants::*;
 
 // Calculate total amount of tokens in the pool at equilibrium when trading along the curve.
 // Solves the corresponding quadratic equation explicitly.
@@ -6,51 +7,51 @@ use scrypto::prelude::*;
 // Should not panic for any realistic input combination passing the assertions
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_target_ratio(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
-    assert!(p0 > dec!(0), "Invalid p0");
-    assert!(actual > dec!(0), "Invalid actual reserves");
-    assert!(surplus >= dec!(0), "Invalid surplus amount");
-    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+    assert!(p0 > ZERO, "Invalid p0");
+    assert!(actual > ZERO, "Invalid actual reserves");
+    assert!(surplus >= ZERO, "Invalid surplus amount");
+    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
 
-    let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
-    let num = dec!(2) * k - dec!(1) + radicand.checked_sqrt().unwrap();
-    num / k / dec!(2)
+    let radicand = ONE + FOUR * k * surplus / p0 / actual;
+    let num = TWO * k - ONE + radicand.checked_sqrt().unwrap();
+    num / k / TWO
 }
 
 // Calculate spot price for tokens (disregarding fee) when trading on the curve.
 // Direct implementation of the Dodo price curve equation converted to ratio.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_spot(p0: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
-    assert!(p0 > dec!(0), "Invalid p0");
-    assert!(target_ratio >= dec!(1), "Invalid target ratio");
-    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+    assert!(p0 > ZERO, "Invalid p0");
+    assert!(target_ratio >= ONE, "Invalid target ratio");
+    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
 
     let ratio2 = target_ratio * target_ratio;
-    (dec!(1) + k * (ratio2 - dec!(1))) * p0
+    (ONE + k * (ratio2 - ONE)) * p0
 }
 
 // Calculate equilibrium price from trading curve and known spot price.
 // Based on direct implementation of Dodo spot price curve, rearranged to solve for p0.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_p0_from_spot(p_spot: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
-    assert!(p_spot > dec!(0), "Invalid p_spot");
-    assert!(target_ratio >= dec!(1), "Invalid target ratio");
-    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+    assert!(p_spot > ZERO, "Invalid p_spot");
+    assert!(target_ratio >= ONE, "Invalid target ratio");
+    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
 
     let ratio2 = target_ratio * target_ratio;
-    p_spot / (dec!(1) + k * (ratio2 - dec!(1)))
+    p_spot / (ONE + k * (ratio2 - ONE))
 }
 
 // Calculate equilibrium price with the rest of the trading curve parameters given.
 // Rearranges the integrated Dodo spot price curve to solve for p0.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
 pub fn calc_p0_from_curve(shortfall: Decimal, surplus: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
-    assert!(shortfall > dec!(0), "Invalid shortfall");
-    assert!(surplus > dec!(0), "Invalid surplus");
-    assert!(target_ratio >= dec!(1), "Invalid target ratio");
-    assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
+    assert!(shortfall > ZERO, "Invalid shortfall");
+    assert!(surplus > ZERO, "Invalid surplus");
+    assert!(target_ratio >= ONE, "Invalid target ratio");
+    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
 
     // Calculate the price at equilibrium (p0) using the given formula
-    surplus / shortfall / (dec!(1) + k * (target_ratio - dec!(1)))
+    surplus / shortfall / (ONE + k * (target_ratio - ONE))
 }
 
 // Integrate along the trading curve towards equilibrium to find output corresponding to given input_amount.
@@ -64,17 +65,17 @@ pub fn calc_incoming(
     k_in: Decimal,
 ) -> Decimal {
     // Ensure the sum of the actual and input amounts does not exceed the target
-    assert!(input_amount > dec!(0), "Invalid input amount");
+    assert!(input_amount > ZERO, "Invalid input amount");
     assert!(target > actual, "Invalid target reserves");
-    assert!(actual > dec!(0), "Invalid actual reserves");
-    assert!(p0 > dec!(0), "Invalid reference price");
-    assert!(k_in >= dec!("0.001") && k_in <= dec!(1), "Invalid k_in");
+    assert!(actual > ZERO, "Invalid actual reserves");
+    assert!(p0 > ZERO, "Invalid reference price");
+    assert!(k_in >= MIN_K_IN && k_in <= ONE, "Invalid k_in");
     assert!(actual + input_amount <= target, "Infeasible combination");
     
     // Calculate the expected surplus values
     let actual_after = actual + input_amount;
-    let surplus_before = (target - actual) * p0 * (dec!(1) + k_in * (target - actual) / actual);
-    let surplus_after = (target - actual_after) * p0 * (dec!(1) + k_in * (target - actual_after) / actual_after);
+    let surplus_before = (target - actual) * p0 * (ONE + k_in * (target - actual) / actual);
+    let surplus_after = (target - actual_after) * p0 * (ONE + k_in * (target - actual_after) / actual_after);
 
     // The difference is the output amount
     surplus_before - surplus_after
@@ -93,11 +94,11 @@ pub fn calc_outgoing(
     p_ref: Decimal,
     k_out: Decimal,
 ) -> Decimal {
-    assert!(input_amount > dec!(0), "Invalid input amount");
+    assert!(input_amount > ZERO, "Invalid input amount");
     assert!(target >= actual, "Invalid target reserves");
-    assert!(actual > dec!(0), "Invalid actual reserves");
-    assert!(p_ref > dec!(0), "Invalid reference price");
-    assert!(k_out >= dec!("0.001") && k_out <= dec!(1), "Invalid k_in");
+    assert!(actual > ZERO, "Invalid actual reserves");
+    assert!(p_ref > ZERO, "Invalid reference price");
+    assert!(k_out >= MIN_K_IN && k_out <= ONE, "Invalid k_in");
 
     // Calculate current shortfall of tokens
     let shortfall = target - actual;
@@ -107,7 +108,7 @@ pub fn calc_outgoing(
     let scaled_new_surplus = (surplus + input_amount) / p_ref;
 
     // Special case for k_out equal to 1 (constant product)
-    if k_out == dec!(1) {
+    if k_out == ONE {
         let new_shortfall = scaled_new_surplus * target / (target + scaled_new_surplus);
 
         // Calculate and return the difference in shortfall
@@ -119,12 +120,12 @@ pub fn calc_outgoing(
                 target + scaled_new_surplus -
                 (
                     target * target
-                    + (dec!(4) * k_out - dec!(2)) * target * scaled_new_surplus
+                    + (FOUR * k_out - TWO) * target * scaled_new_surplus
                     + scaled_new_surplus * scaled_new_surplus
                 ).checked_sqrt().unwrap()
             )
-            / dec!(2)
-            / (dec!(1) - k_out);
+            / TWO
+            / (ONE - k_out);
 
         // Calculate and return the difference in shortfall
         new_shortfall - shortfall

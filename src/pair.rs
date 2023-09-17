@@ -300,7 +300,6 @@ mod plazapair {
         }
 
         // Get a quote from the AMM for trading tokens on the pair
-        // TODO -- CHECK FOR EMPTY liq!
         pub fn quote(
             &self,
             input_amount: Decimal,
@@ -333,12 +332,15 @@ mod plazapair {
             // stored target value to elegantly deal with the excess tokens from earlier from the sparser
             // liquidity on the curve trading away from equilibrium.
             if incoming {
-                let adjusted_target = calc_target_ratio(p_ref, actual, surplus, self.config.k_in) * actual;
+                let adjusted_target = match actual > ZERO {
+                    true => calc_target_ratio(p_ref, actual, surplus, self.config.k_in) * actual,
+                    false => ZERO,
+                };
                 let adjusted_shortfall = adjusted_target - actual;
 
                 // If we add more than required to reach equilibrium, we reset to equilibrium and continue the
                 // trade on the outgoing curve below.
-                if input_amount < shortfall {
+                if input_amount < adjusted_shortfall {
                     // If we stay in the same shortage situation, we calculate according to the incoming curve.
                     output_amount = calc_incoming(
                         input_amount,
@@ -391,7 +393,7 @@ mod plazapair {
             };
 
             // Handle the trading away from equilbrium case
-            if amount_traded < input_amount {
+            if amount_traded < input_amount && actual > ZERO {
                 let last_outgoing_spot = match pool == self.base_pool {
                     true => self.state.last_out_spot,
                     false => ONE / self.state.last_out_spot,
@@ -430,28 +432,26 @@ mod plazapair {
                 new_state.last_outgoing = t;
                 let new_actual = actual - outgoing_amount;
                 new_state.target_ratio = target / new_actual;
-                (new_state.shortage, new_state.last_out_spot) = match pool == self.base_pool {
+                (new_state.shortage, new_state.last_out_spot, new_state.p0) = match pool == self.base_pool {
                     true => (
                         Shortage::BaseShortage,
-                        calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out)
+                        calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out),
+                        p_ref,
                     ),
                     false => (
                         Shortage::QuoteShortage,
-                        ONE / calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out)
+                        ONE / calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out),
+                        ONE / p_ref,
                     ),
                 };
-            } else {
-                // Allocate pool changes
-                match input_is_quote {
-                    true => {
-                        base_base = ZERO;
-                        base_quote = ZERO;
-                    },
-                    false => {
-                        quote_base = ZERO;
-                        quote_quote = ZERO;
-                    }
-                };                
+            }
+
+            // No liquidity in outgoing direction, reset to equilibrium
+            if amount_traded < input_amount {
+                new_state.shortage = Shortage::Equilibrium;
+                new_state.target_ratio = ONE;
+                new_state.last_out_spot = new_state.p0;
+                new_state.last_outgoing = t;
             }
 
             // Calculate output variables
