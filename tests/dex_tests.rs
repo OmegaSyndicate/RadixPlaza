@@ -2,7 +2,6 @@ use defiplaza::dex::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
-use scrypto::prelude::ScryptoBucket;
 
 #[test]
 fn deploys() -> Result<(), RuntimeError> {
@@ -41,15 +40,15 @@ fn deploys() -> Result<(), RuntimeError> {
         fee: dec!("0"),
     };
     dex.create_pair( 
-        a_bucket.take(dec!(1000), &mut env)?.as_fungible()?,
-        dfp2_bucket.take(dec!(1), &mut env)?.as_fungible()?,
+        a_bucket.take(dec!(1000), &mut env)?,
+        dfp2_bucket.take(dec!(1000), &mut env)?,
         config,
         dec!(1),
         &mut env,
     )?;
     dex.create_pair( 
-        b_bucket.take(dec!(1000), &mut env)?.as_fungible()?,
-        dfp2_bucket.take(dec!(1), &mut env).as_fungible()?,
+        b_bucket.take(dec!(1000), &mut env)?,
+        dfp2_bucket.take(dec!(1000), &mut env)?,
         config,
         dec!(1),
         &mut env,

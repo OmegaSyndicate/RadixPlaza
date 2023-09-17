@@ -24,8 +24,8 @@ mod plazapair {
     impl PlazaPair {
         pub fn instantiate_pair(
             owner_role: OwnerRole,
-            base_bucket: FungibleBucket,
-            quote_bucket: FungibleBucket,
+            base_bucket: Bucket,
+            quote_bucket: Bucket,
             config: PairConfig,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
@@ -68,8 +68,8 @@ mod plazapair {
             );
 
             // Create vaults for the minimum liquidity
-            let base_vault = Vault::with_bucket(base_bucket.into());
-            let quote_vault = Vault::with_bucket(quote_bucket.into());
+            let base_vault = Vault::with_bucket(base_bucket);
+            let quote_vault = Vault::with_bucket(quote_bucket);
             let pool_map: HashMap<_, _> = [
                 (base_pool.address(), quote_vault),
                 (quote_pool.address(), base_vault),

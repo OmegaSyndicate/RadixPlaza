@@ -38,7 +38,7 @@ mod plazadex {
         pub fn instantiate_dex(dfp2_address: ResourceAddress, owner_badge: ResourceAddress) -> Global<PlazaDex> {
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
-                Runtime::allocate_component_address(PlazaPair::blueprint_id());
+                Runtime::allocate_component_address(PlazaDex::blueprint_id());
             let global_component_caller_badge =
                 NonFungibleGlobalId::global_caller_badge(component_address);
             
@@ -65,8 +65,8 @@ mod plazadex {
         // Create a new liquidity pair on the exchange
         pub fn create_pair(
             &mut self,
-            mut base_bucket: FungibleBucket,
-            mut dfp2_bucket: FungibleBucket,
+            mut base_bucket: Bucket,
+            mut dfp2_bucket: Bucket,
             config: PairConfig,
             p0: Decimal
         ) -> Global<PlazaPair> {
