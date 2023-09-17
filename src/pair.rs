@@ -180,24 +180,34 @@ mod plazapair {
 
                     // Calculate the target ratios before and after the add
                     let new_actual = reserve + input_amount;
-                    let target_ratio = calc_target_ratio(p_ref, reserve, surplus, self.config.k_in);
-                    let new_target_ratio = calc_target_ratio(p_ref, new_actual, surplus, self.config.k_in);
-                    
-                    // TODO: REDO THIS CALCULATION!!
+                    let target = calc_target_ratio(p_ref, reserve, surplus, self.config.k_in) * reserve;
+                    let new_target = calc_target_ratio(p_ref, new_actual, surplus, self.config.k_in) * new_actual;
+
                     // Withdraw the correct fraction of surplus to add back
-                    let new_lp_fraction = (new_target_ratio - target_ratio) / new_target_ratio;
-                    let temp_bucket = pool.protected_withdraw(
+                    let new_lp_fraction = (new_target - target) / new_target;
+                    let other_bucket = pool.protected_withdraw(
                         surplus_address,
                         new_lp_fraction * surplus,
                         WithdrawStrategy::Exact
                     );
 
+                    // Also withdraw a complement of the main reserve
+                    let complement = new_lp_fraction * new_actual - input_amount;
+                    let mut complement_bucket = pool.protected_withdraw(
+                        min_liq_addr,
+                        complement,
+                        WithdrawStrategy::Exact
+                    );
+                    complement_bucket.put(input_bucket);
+
                     // Finally add the liquidity and add back the remainder
-                    let (lp_tokens, remainder) = pool.contribute((input_bucket, temp_bucket));
-                    pool.protected_deposit(remainder.expect("Remainder not found??"));
+                    let (lp_tokens, remainder) = pool.contribute((complement_bucket, other_bucket));
+                    if let Some(bucket) = remainder {
+                        pool.protected_deposit(bucket);
+                    }
 
                     // Update the target ratio and return the lp_tokens
-                    self.state.target_ratio = new_target_ratio / target_ratio * self.state.target_ratio;
+                    self.state.target_ratio = new_target / new_actual;
                     lp_tokens
                 }
             };

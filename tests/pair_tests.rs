@@ -12,13 +12,13 @@ fn deploys() -> Result<(), RuntimeError> {
 
     let bucket1 = ResourceBuilder::new_fungible(OwnerRole::None) 
         .divisibility(18)
-        .mint_initial_supply(10000, &mut env)?.as_fungible();
+        .mint_initial_supply(10000, &mut env)?;
     let bucket2 = ResourceBuilder::new_fungible(OwnerRole::None) 
         .divisibility(18)
-        .mint_initial_supply(10000, &mut env)?.as_fungible();
+        .mint_initial_supply(10000, &mut env)?;
 
-    let resource_address1 = bucket1.resource_address();
-    let resource_address2 = bucket2.resource_address();
+    let resource_address1 = bucket1.resource_address(&mut env);
+    let resource_address2 = bucket2.resource_address(&mut env);
 
     let config = PairConfig {
         k_in: dec!("0.4"),
@@ -27,8 +27,8 @@ fn deploys() -> Result<(), RuntimeError> {
     };
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        bucket1.take(dec!(1000), &mut env)?.as_fungible(),
-        bucket2.take(dec!(1000), &mut env)?.as_fungible(),
+        bucket1.take(dec!(1000), &mut env)?.into(),
+        bucket2.take(dec!(1000), &mut env)?.into(),
         config,
         dec!(1),
         package_address,
