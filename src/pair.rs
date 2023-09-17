@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::constants::*;
 use crate::events::*;
 use crate::helpers::*;
 use crate::types::*;
@@ -8,75 +9,71 @@ use crate::types::*;
 mod plazapair {
     // PlazaPair struct represents a liquidity pair in the trading platform
     struct PlazaPair {
-        config: PairConfig,                 // Pool configuration
-        state: PairState,                   // Pool parameters
-        base_vault: Vault,                  // Holds the base tokens
-        quote_vault: Vault,                 // Holds the quote tokens
-        base_lp: ResourceManager,           // Resource address of base LP tokens
-        quote_lp: ResourceManager,          // Resource address of quote LP tokens
+        config: PairConfig,                         // Pool configuration
+        state: PairState,                           // Pool parameters
+        base_address: ResourceAddress,              // Base token address
+        quote_address: ResourceAddress,             // Quote token address
+        base_pool: Global<TwoResourcePool>,         // Holds base tokens plus some quote tokens
+        quote_pool: Global<TwoResourcePool>,        // Holds quote tokens plus some base tokens
+        min_liquidity: HashMap<                          
+            ComponentAddress,                       // For both pools counter token:
+            Vault                                   //  hold a tiny amount to temp add when empty
+        >,  
     }
 
     impl PlazaPair {
         pub fn instantiate_pair(
-            base_token: ResourceAddress,
-            quote_token: ResourceAddress,
+            owner_role: OwnerRole,
+            base_bucket: FungibleBucket,
+            quote_bucket: FungibleBucket,
             config: PairConfig,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
-            // let config = PairConfig {
-            //     k_in: dec!("0.4"),
-            //     k_out: dec!("1"),
-            //     fee: dec!("0.003"),
-            // };
-            assert!(config.k_in >= dec!("0.001"), "Invalid k_in value");
+            assert!(base_bucket.amount() == MIN_LIQUIDITY, "Invalid base amount");
+            assert!(quote_bucket.amount() == MIN_LIQUIDITY, "Invalid quote amount");
+            assert!(config.k_in >= MIN_K_IN, "Invalid k_in value");
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
-            assert!(config.k_out == dec!(1) || config.k_out < dec!("0.999"), "Invalid k_out value");
-            assert!(config.fee >= dec!(0) && config.fee < dec!(1), "Invalid fee level");
-
-            let base_manager = ResourceManager::from(base_token);
-            let quote_manager = ResourceManager::from(quote_token);
-            assert!(base_manager.resource_type().is_fungible(), "Non-fungible base token detected");
-            assert!(quote_manager.resource_type().is_fungible(), "Non-fungible quote token detected");
+            assert!(config.k_out == ONE || config.k_out < CLIP_K_OUT, "Invalid k_out value");
+            assert!(config.fee >= ZERO && config.fee < ONE, "Invalid fee level");
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
                 Runtime::allocate_component_address(PlazaPair::blueprint_id());
+            let global_component_caller_badge =
+                NonFungibleGlobalId::global_caller_badge(component_address);
+            let access_rule = rule!(require(global_component_caller_badge));
 
-            // Create LP tokens for the base token providers
-            let base_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
-                .metadata(metadata! {
-                    init {
-                        "name" => "PlazaPair Base LP", locked;
-                        "symbol" => "BASELP", locked;
-                    }
-                })
-                .mint_roles(mint_roles! {
-                    minter => rule!(require(global_caller(component_address))); 
-                    minter_updater => rule!(deny_all);
-                })
-                .burn_roles(burn_roles! {
-                    burner => rule!(require(global_caller(component_address)));
-                    burner_updater => rule!(deny_all);
-                })
-                .create_with_no_initial_supply();
+            // Gather token properties
+            let base_address = base_bucket.resource_address();
+            let quote_address = quote_bucket.resource_address();
+            let base_manager = ResourceManager::from(base_address);
+            let quote_manager = ResourceManager::from(quote_address);
+            assert!(base_manager.resource_type().divisibility().unwrap() == 18, "Bad base divisibility");
+            assert!(quote_manager.resource_type().divisibility().unwrap() == 18, "Bad quote divisibility");
 
-            // Create LP tokens for the quote token providers
-            let quote_lp: ResourceManager = ResourceBuilder::new_fungible(OwnerRole::None)
-                .metadata(metadata! {
-                    init {
-                        "name" => "PlazaPair Quote LP", locked;
-                        "symbol" => "QUOTELP", locked;
-                    }
-                })
-                .mint_roles(mint_roles! {
-                    minter => rule!(require(global_caller(component_address))); 
-                    minter_updater => rule!(deny_all);
-                })
-                .burn_roles(burn_roles! {
-                    burner => rule!(require(global_caller(component_address)));
-                    burner_updater => rule!(deny_all);
-                })
-                .create_with_no_initial_supply();
+            // Create pool for base liquidity providers
+            let base_pool = Blueprint::<TwoResourcePool>::instantiate(
+                owner_role.clone(),
+                access_rule.clone(),
+                (base_address, quote_address),
+                None,
+            );
+
+            // Create pool for quote liquidity providers
+            let quote_pool = Blueprint::<TwoResourcePool>::instantiate(
+                owner_role.clone(),
+                access_rule,
+                (quote_address, base_address),
+                None,
+            );
+
+            // Create vaults for the minimum liquidity
+            let base_vault = Vault::with_bucket(base_bucket.into());
+            let quote_vault = Vault::with_bucket(quote_bucket.into());
+            let pool_map: HashMap<_, _> = [
+                (base_pool.address(), quote_vault),
+                (quote_pool.address(), base_vault),
+            ].into_iter().collect();
 
             // Instantiate a PlazaPair component
             let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
@@ -84,381 +81,402 @@ mod plazapair {
                 config: config,
                 state: PairState {
                     p0: initial_price,
-                    base_target: dec!(0),
-                    quote_target: dec!(0),
                     shortage: Shortage::Equilibrium,
-                    last_trade: now,
+                    target_ratio: ONE,
                     last_outgoing: now,
-                    last_spot: initial_price,
+                    last_out_spot: initial_price,
                 },
-                base_vault: Vault::new(base_token),
-                quote_vault: Vault::new(quote_token),
-                base_lp: base_lp,
-                quote_lp: quote_lp,
+                base_address: base_address,
+                quote_address: quote_address,
+                base_pool: base_pool,
+                quote_pool: quote_pool,
+                min_liquidity: pool_map,
             }
             .instantiate()
-            .prepare_to_globalize(OwnerRole::None)
+            .prepare_to_globalize(owner_role)
             .with_address(address_reservation)
             .globalize()
         }
 
         // Add liquidity to the pool in return for LP tokens
-        pub fn add_liquidity(&mut self, input_bucket: Bucket) -> Bucket {
-            let token_amount = input_bucket.amount();
-            assert!(token_amount > dec!(0), "Empty bucket provided");
-        
-            // Determine if the bucket is for the quote or the base pool
-            let is_quote = self.quote_vault.resource_address() == input_bucket.resource_address();
-            if !is_quote {
-                assert!(
-                    input_bucket.resource_address() == self.base_vault.resource_address(),
-                    "Invalid bucket"
-                );
-            }
-        
-            // Based on the bucket type, choose the correct vault, target and resource address
-            let (vault, other_vault, target_amount, other_target, lp_manager) = if is_quote {
-                (
-                    &mut self.quote_vault,
-                    &self.base_vault,
-                    &mut self.state.quote_target,
-                    self.state.base_target,
-                    self.quote_lp
-                )
-            } else {
-                (
-                    &mut self.base_vault,
-                    &self.quote_vault,
-                    &mut self.state.base_target,
-                    self.state.quote_target,
-                    self.base_lp
-                )
-            };
-            let (actual_amount, other_amount) = ((*vault).amount(), (*other_vault).amount());
-            
-            // Check amount of outstanding LP tokens
-            let lp_outstanding = lp_manager.total_supply().unwrap();
-        
-            // Calculate the new LP amount
-            let (new_target, lp_amount) = match (lp_outstanding == dec!(0), actual_amount < *target_amount) {
-                (true,_) => (token_amount, token_amount),
-                // If the token being added is in shortage, we need to issue LP tokens in ratio with
-                // the increase in target amount that keeps the trading curve anchored to the right
-                // value of p0. Note that we assume the low-pass filter to be at steady state as that
-                // is the conservative approach when issuing new LP tokens.
-               (_,true) => {
-                    let k = self.config.k_in;
-                    let surplus = other_amount - other_target;
-                    let p0 = calc_p0_from_surplus(surplus, *target_amount, actual_amount, k);
-                    let current_target = calc_target(p0, actual_amount, surplus, k);
-                    let new_target = calc_target(p0, actual_amount + token_amount, surplus, k);
-                    (new_target, (new_target - current_target) / current_target * lp_outstanding)
+        pub fn add_liquidity(
+            &mut self,
+            input_bucket: Bucket,
+            is_quote: bool,
+        ) -> Bucket {
+            // Retrieve appropriate liquidity pool
+            let (mut pool, in_shortage) = match is_quote {
+                true => {
+                    let in_shortage = self.state.shortage == Shortage::QuoteShortage;
+                    (self.quote_pool, in_shortage)
                 }
-                // If this token is not in shortage we can simply issue in ratio with existing amount
-                (_,_) => {
-                    (*target_amount + token_amount, token_amount / *target_amount * lp_outstanding)
+                false => {
+                    let in_shortage = self.state.shortage == Shortage::BaseShortage;
+                    (self.base_pool, in_shortage)
+                }
+            };
+
+            let input_amount = input_bucket.amount();
+            let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
+            let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
+            let min_liq_addr = min_liq.resource_address();
+            let mut tiny_bucket = min_liq.take(MIN_LIQUIDITY);
+
+            let lp_bucket = match (reserve == ZERO, in_shortage) {
+                // No liquidity present, this is the first to be added
+                (true, false) => {
+                    let (lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
+                    min_liq.put(
+                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
+                    );
+                    lp_tokens
+                }
+                // Someone took out all remaining liquidity while in shortage
+                (true, true) => {
+                    self.state.shortage = Shortage::Equilibrium;
+                    self.state.target_ratio = ONE;
+                    self.state.last_out_spot = self.state.p0;
+
+                    let (lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
+                    min_liq.put(
+                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
+                    );
+                    lp_tokens
+                }
+                // Not in shortage, can just add in ratio
+                (false, false) => {
+                    pool.protected_deposit(
+                        tiny_bucket.take(reserve / (reserve + input_amount) / TWO * tiny_bucket.amount())
+                    );
+                    let (lp_tokens, remainder) = pool.contribute((input_bucket, tiny_bucket));
+                    pool.protected_deposit(remainder.expect("Remainder not found??"));
+                    min_liq.put(
+                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
+                    );
+                    lp_tokens
+                }
+                // The most difficult case. Pool is in shortage, need to calculate precisely
+                (false, true) => {
+                    // We don't need our tiny bucket in this scenario
+                    min_liq.put(tiny_bucket);
+
+                    // Retrieve surplus and target ratio values
+                    let (&surplus_address, &surplus) = pool.get_vault_amounts().get_index(1).unwrap();
+                    let target_ratio = self.state.target_ratio;
+                    let shortfall = target_ratio * reserve - reserve;
+
+                    // Compute time since previous trade and resulting decay factor for the filter
+                    let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
+                    let delta_t = (t - self.state.last_outgoing).max(0);
+                    let factor = Decimal::checked_powi(&DECAY_FACTOR, delta_t / 60).unwrap();
+
+                    // Caculate the filtered reference price
+                    let old_pref = match is_quote {
+                        true => self.state.p0,
+                        false => ONE / self.state.p0,
+                    };
+                    let p_ref_ss = calc_p0_from_curve(shortfall, surplus, target_ratio, self.config.k_in);
+                    let p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
+
+                    // Calculate the target ratios before and after the add
+                    let new_actual = reserve + input_amount;
+                    let target_ratio = calc_target_ratio(p_ref, reserve, surplus, self.config.k_in);
+                    let new_target_ratio = calc_target_ratio(p_ref, new_actual, surplus, self.config.k_in);
+                    
+                    // TODO: REDO THIS CALCULATION!!
+                    // Withdraw the correct fraction of surplus to add back
+                    let new_lp_fraction = (new_target_ratio - target_ratio) / new_target_ratio;
+                    let temp_bucket = pool.protected_withdraw(
+                        surplus_address,
+                        new_lp_fraction * surplus,
+                        WithdrawStrategy::Exact
+                    );
+
+                    // Finally add the liquidity and add back the remainder
+                    let (lp_tokens, remainder) = pool.contribute((input_bucket, temp_bucket));
+                    pool.protected_deposit(remainder.expect("Remainder not found??"));
+
+                    // Update the target ratio and return the lp_tokens
+                    self.state.target_ratio = new_target_ratio / target_ratio * self.state.target_ratio;
+                    lp_tokens
                 }
             };
         
             // Emit add liquidity event
-            Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount, lp_amount});
+            let lp_amount = lp_bucket.amount();
+            Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount: input_amount, lp_amount});
 
-            // Take in liquidity, update target and mint the new LP tokens
-            vault.put(input_bucket);
-            *target_amount = new_target;
-            lp_manager.mint(lp_amount)
+            lp_bucket
         }
 
         // Exchange LP tokens for the underlying liquidity held in the pair
-        // TODO -- ENSURE HEALTH WITH ZERO LIQ
-        pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
-            // Ensure the bucket isn't empty
-            let lp_amount = lp_tokens.amount();
-            assert!(lp_amount > dec!(0), "Empty bucket provided");
-            assert!(
-                lp_tokens.resource_address() == self.quote_lp.address() ||
-                    lp_tokens.resource_address() == self.base_lp.address(), 
-                "Invalid LP tokens"
-            );
-
-            // Determine which vault and target values should be used
-            let is_quote = lp_tokens.resource_address() == self.quote_lp.address();
-            let (main_vault, other_vault, main_target, other_target, is_shortage, lp_manager) = if is_quote {
-                (
-                    &mut self.quote_vault,
-                    &mut self.base_vault,
-                    &mut self.state.quote_target,
-                    self.state.base_target,
-                    self.state.shortage == Shortage::QuoteShortage,
-                    self.quote_lp,
-                )
-            } else {
-                (
-                    &mut self.base_vault,
-                    &mut self.quote_vault,
-                    &mut self.state.base_target,
-                    self.state.quote_target,
-                    self.state.shortage == Shortage::BaseShortage,
-                    self.base_lp,
-                )
+        pub fn remove_liquidity(&mut self, lp_bucket: Bucket, is_quote: bool) -> (Bucket, Bucket) {
+            // Get corresponding pool component
+            let mut pool = match is_quote {
+                true => self.quote_pool,
+                false => self.base_pool,
             };
 
-            // Calculate fraction of liquidity being withdrawn
-            let lp_outstanding = lp_manager.total_supply().unwrap();
-            let fraction = lp_amount / lp_outstanding;
-
-            // Calculate how many tokens are represented by the withdrawn LP tokens
-            let (main_amount, other_amount) = if is_shortage {                
-                let surplus = other_vault.amount() - other_target;
-                (
-                    fraction * main_vault.amount(),
-                    fraction * surplus,
-                )
-            } else {
-                (
-                    fraction * *main_target,
-                    dec!(0),
-                )
-            };
-
-            // Burn the LP tokens and update the target value
-            lp_tokens.burn();
-            *main_target -= fraction * *main_target;
+            // Retrieve liquidity and return to the caller
+            let lp_amount = lp_bucket.amount();
+            let (main_bucket, other_bucket) = pool.redeem(lp_bucket);
 
             // Emit RemoveLiquidityEvent
+            let (main_amount, other_amount) = (main_bucket.amount(), other_bucket.amount());
             Runtime::emit_event(RemoveLiquidityEvent{is_quote, main_amount, other_amount, lp_amount});
 
-            // Take liquidity from the vault and return to the caller
-            (main_vault.take(main_amount), other_vault.take(other_amount))
+            (main_bucket, other_bucket)
         }
 
         /// Swap a bucket of tokens along the AMM curve.
-        pub fn swap(&mut self, input_tokens: Bucket) -> Bucket {
+        pub fn swap(&mut self, mut input_bucket: Bucket) -> (Bucket, Option<Bucket>) {
             // Ensure the input bucket isn't empty
-            assert!(input_tokens.amount() > dec!(0), "Empty input bucket");
+            assert!(input_bucket.amount() > ZERO, "Empty input bucket");
 
-            // Calculate the amount of output tokens and pair impact variables.
-            let input_amount = input_tokens.amount();
-            let is_quote = input_tokens.resource_address() == self.quote_vault.resource_address();
-            let (output_amount, fee, mut new_state) = self.quote(input_amount, is_quote);
+            // Calculate the amount of output tokens and pair impact variables
+            let input_amount = input_bucket.amount();
+            let input_is_quote = input_bucket.resource_address() == self.quote_address;
+            let (output_amount, _remainder, allocation, new_state) = self.quote(input_amount, input_is_quote);
 
             // Log trade event
-            let (base_amount, quote_amount) = match is_quote{
+            let (base_amount, quote_amount) = match input_is_quote{
                 true => (-output_amount, input_amount),
                 false => (input_amount, -output_amount),
             };
             Runtime::emit_event(SwapEvent{base_amount, quote_amount});
 
-            let (token_in, token_out) = if is_quote {
-                ("quote", "base")
-            } else {
-                ("base", "quote")
+            // Process the trade as per the allocation
+            // TODO: implement other case
+            let output_bucket = match input_is_quote {
+                _ => {
+                    if allocation.base_quote > ZERO {
+                        self.base_pool.protected_deposit(input_bucket.take(allocation.base_quote));
+                    }
+                    if allocation.quote_quote > ZERO {
+                        self.quote_pool.protected_deposit(input_bucket.take(allocation.base_quote));
+                    }
+                    let mut bucket = Bucket::new(self.base_address);
+                    if allocation.base_base > ZERO {
+                        bucket.put(
+                            self.base_pool.protected_withdraw(
+                                self.base_address,
+                                allocation.base_base,
+                                WithdrawStrategy::Exact
+                            )
+                        );
+                    }
+                    if allocation.quote_base > ZERO {
+                        bucket.put(
+                            self.quote_pool.protected_withdraw(
+                                self.base_address,
+                                allocation.quote_base,
+                                WithdrawStrategy::Exact
+                            )
+                        );                        
+                    }
+                    bucket
+                }
             };
-            info!("  SWAP: {} {} for {} {}.", input_amount, token_in, output_amount, token_out);
 
-            // Update the target values and select the input and output vaults based on input_tokens type.
-            let (input_vault, output_vault) = if is_quote {
-                new_state.base_target += fee;
-                (&mut self.quote_vault, &mut self.base_vault)
-            } else {
-                new_state.quote_target += fee;
-                (&mut self.base_vault, &mut self.quote_vault)
+            // Adjust pair state
+            // TODO: Get fee incorporated!
+            self.state = new_state;            
+
+            // Create remainder bucket option
+            let remainder = match input_bucket.is_empty() {
+                true => Some(input_bucket),
+                false => {
+                    input_bucket.drop_empty();
+                    None
+                }
             };
 
-            // Adjust pair state variables.
-            self.state = new_state;
-            debug!("  p0: {} -- state {}", new_state.p0, new_state.shortage);
-
-            // Transfer the tokens.
-            input_vault.put(input_tokens);
-            output_vault.take(output_amount)
-        }
-
-        // Getter function to identify related LP tokens
-        pub fn get_lp_tokens(&self) -> (ResourceAddress, ResourceAddress) {
-            (self.base_lp.address(), self.quote_lp.address())
+            (output_bucket, remainder)
         }
 
         // Get a quote from the AMM for trading tokens on the pair
-        pub fn quote(&self, input_amount: Decimal, input_is_quote: bool) -> (Decimal, Decimal, PairState) {
+        // TODO -- CHECK FOR EMPTY liq!
+        pub fn quote(
+            &self,
+            input_amount: Decimal,
+            input_is_quote: bool
+        ) -> (Decimal, Decimal, TradeAllocation, PairState) {
+            assert!(input_amount > ZERO, "Invalid input amount");
             let mut new_state = self.state;
 
-            // Compute time since previous trade
+            // Check which pool we're workings with and extract relevant values
+            let (mut pool, old_pref, incoming) = self.select_pool(input_is_quote);
+            let (mut actual, surplus, shortfall) = self.assess_pool(pool, new_state.target_ratio);
+
+            // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-            let delta_t = if t > self.state.last_trade { 
-                t - self.state.last_trade
-            } else { 
-                0
-            };
-            new_state.last_trade = t;
-            debug!("  delta_t: {} -- last_trade {}", delta_t, self.state.last_trade);
+            let delta_t = (t - self.state.last_outgoing).max(0);
+            let factor = Decimal::checked_powi(&DECAY_FACTOR, delta_t / 60).unwrap();
 
-            // Compute decay factor with a 15 minute time constant
-            let factor = Decimal::checked_powi(&dec!("0.9355"), delta_t / 60).unwrap();
-            debug!("  old-new p0 skew factor {}", factor);
-
-            // Collect current actual balances
-            let (base_actual, quote_actual) = (self.base_vault.amount(), self.quote_vault.amount());
-
-            // Set the input and output vaults and targets based on input_tokens type
-            let (input_actual, mut output_actual, input_target, mut output_target) =
-                if input_is_quote {
-                    (
-                        quote_actual,
-                        base_actual,
-                        self.state.quote_target,
-                        self.state.base_target,
-                    )
-                } else {
-                    (
-                        base_actual,
-                        quote_actual,
-                        self.state.base_target,
-                        self.state.quote_target,
-                    )
-                };            
-
-            // Calculate the base[quote] price in equilibrium
-            let new_p0 = match self.state.shortage {
-                Shortage::BaseShortage => {
-                    let quote_surplus = quote_actual - self.state.quote_target;
-                    calc_p0_from_surplus(quote_surplus, self.state.base_target, base_actual, self.config.k_in)
-                }
-                Shortage::Equilibrium => self.state.p0,
-                Shortage::QuoteShortage => {
-                    let base_surplus = base_actual - self.state.base_target;
-                    dec!(1) / calc_p0_from_surplus(base_surplus, self.state.quote_target, quote_actual, self.config.k_in)
-                }
-            };
-            let p0 = factor * self.state.p0 + (dec!(1) - factor) * new_p0;
-            new_state.p0 = p0;
-            debug!("  old_p0: {}, new_p0: {}, skewed_p0: {}", self.state.p0, new_p0, p0);
-
-
-            // Set reference price to B[Q] or Q[B] depending on liquidity
-            let (mut p_ref, mut last_spot) = 
-                match self.state.shortage {
-                    Shortage::BaseShortage => { (p0, self.state.last_spot) },
-                    Shortage::Equilibrium => {
-                        if input_is_quote {
-                            (p0, self.state.last_spot)
-                        } else {
-                            (dec!(1) / p0, dec!(1) / self.state.last_spot)
-                        }
-                    },
-                    Shortage::QuoteShortage => { (dec!(1) / p0, dec!(1) / self.state.last_spot) },
-                };
-            debug!("  p_ref used: {}", p_ref);
-
-            // Determine which state represents input shortage based on input type
-            let in_input_shortage = match input_is_quote {
-                true => Shortage::QuoteShortage,
-                false => Shortage::BaseShortage
-            };
-            debug!("  Input shortage indicated as {}", in_input_shortage);
+            // Caculate the filtered reference price
+            let mut p_ref_ss = calc_p0_from_curve(shortfall, surplus, new_state.target_ratio, self.config.k_in);
+            let p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
 
             // Define running counters
-            let mut amount_to_trade = input_amount;
-            let mut output_amount = dec!(0);
+            let mut amount_traded = ZERO;
+            let mut output_amount = ZERO;
+            let (mut base_base, mut base_quote, mut quote_base, mut quote_quote) = (ZERO, ZERO, ZERO, ZERO);
 
             // Handle the incoming case (trading towards equilibrium). We project the current reserves on the
             // incoming curve by calculating a adjusted target value to reach equilibrium and spend all surplus
             // counter tokens. If we go past equilibrium, we update state accordingly. Note that we ignore the
             // stored target value to elegantly deal with the excess tokens from earlier from the sparser
             // liquidity on the curve trading away from equilibrium.
-            if new_state.shortage == in_input_shortage {
-                let surplus = output_actual - output_target;
-                let adjusted_target = calc_target(p_ref, input_actual, surplus, self.config.k_in);
-                let shortfall = adjusted_target - input_actual;
-                debug!("  Input shortage of {} detected.", shortfall);
-                debug!("  Skew factor: {}, last_spot: {}, p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, adj_target: {}, actual: {}", input_amount, adjusted_target, input_actual);
+            if incoming {
+                let adjusted_target = calc_target_ratio(p_ref, actual, surplus, self.config.k_in) * actual;
+                let adjusted_shortfall = adjusted_target - actual;
 
                 // If we add more than required to reach equilibrium, we reset to equilibrium and continue the
                 // trade on the outgoing curve below.
-                if amount_to_trade >= shortfall {
-                    debug!("  Trading to/past equilibrium. Leg input: {} -- output: {}", shortfall, surplus);
-                    output_amount = surplus;
-                    amount_to_trade -= shortfall;
-                    output_target = output_actual - output_amount;
-                    output_actual = output_target;
-                    p_ref = dec!(1) / p_ref;    
-                    last_spot = p_ref;
-                    
-                    // Update state variables to match equilibrium values
-                    new_state.set_input_target(adjusted_target, input_is_quote);
-                    new_state.set_output_target(output_target, input_is_quote);
-                    new_state.last_spot = p0;
-                    new_state.shortage = Shortage::Equilibrium;
-                } else {
+                if input_amount < shortfall {
                     // If we stay in the same shortage situation, we calculate according to the incoming curve.
                     output_amount = calc_incoming(
                         input_amount,
                         adjusted_target,
-                        input_actual,
+                        actual,
                         p_ref,
                         self.config.k_in,
                     );
+                    amount_traded = input_amount;
 
-                    // Prevent actual value from being more than the stored target value
-                    let new_input_actual = input_actual + amount_to_trade;
-                    if new_input_actual > input_target {
-                        new_state.set_input_target(new_input_actual, input_is_quote);
-                    }
+                    // Update target ratio
+                    let new_actual = actual + input_amount;
+                    let new_surplus = surplus - output_amount;
+                    new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
+                } else {
+                    // Update running parameters
+                    output_amount = surplus;
+                    amount_traded = adjusted_shortfall;
+                    p_ref_ss = ONE / p_ref;    
+
+                    // Go to equilibrium and switch pool for second leg
+                    new_state.shortage = Shortage::Equilibrium;
+                    new_state.target_ratio = ONE;
+                    pool = match pool == self.base_pool {
+                        true => {
+                            new_state.last_out_spot = p_ref;
+                            new_state.p0 = p_ref;
+                            self.quote_pool
+                        },
+                        false => {
+                            new_state.last_out_spot = ONE / p_ref;
+                            new_state.p0 = ONE / p_ref;
+                            self.base_pool
+                        },
+                    };
+                    (actual, _, _) = self.assess_pool(pool, ONE);
                 }
             }
 
-            // Handle the trading away from equilbrium case
-            if new_state.shortage != in_input_shortage && amount_to_trade > dec!(0) {
-                debug!("  Trade on outgoing curve");
-                // Calibrate outgoing price curve to filtered spot price.
-                let incoming_spot = calc_spot(p_ref, output_target, output_actual, self.config.k_in);
-                let outgoing_spot = factor * last_spot + (dec!(1) - factor) * incoming_spot;
-                let virtual_p_ref = calc_p0_from_spot(outgoing_spot, output_target, output_actual, self.config.k_out);
+            // Allocate pool changes
+            match input_is_quote {
+                true => {
+                    quote_base = output_amount;
+                    quote_quote = amount_traded;
+                },
+                false => {
+                    base_base = amount_traded;
+                    base_quote = output_amount;
+                }
+            };
 
-                debug!("  Skew factor: {}, last_spot: {} p_ref: {}", factor, last_spot, p_ref);                
-                debug!("  Amount: {}, target: {}, actual {}, virtual_p_ref {}", amount_to_trade, output_target, output_actual, virtual_p_ref);
+            // Handle the trading away from equilbrium case
+            if amount_traded < input_amount {
+                let last_outgoing_spot = match pool == self.base_pool {
+                    true => self.state.last_out_spot,
+                    false => ONE / self.state.last_out_spot,
+                };
+
+                // Calibrate outgoing price curve to filtered spot price.
+                let incoming_spot = calc_spot(p_ref_ss, new_state.target_ratio, self.config.k_in);
+                let outgoing_spot = factor * last_outgoing_spot + (ONE - factor) * incoming_spot;
+                let virtual_p_ref = calc_p0_from_spot(outgoing_spot, new_state.target_ratio, self.config.k_out);
+
                 // Calculate output amount based on outgoing curve
-                let outgoing_output = calc_outgoing(
-                    amount_to_trade,
-                    output_target,
-                    output_actual,
+                let target = actual * new_state.target_ratio;
+                let outgoing_amount = calc_outgoing(
+                    input_amount - amount_traded,
+                    target,
+                    actual,
                     virtual_p_ref,
                     self.config.k_out,
                 );
-                output_amount += outgoing_output;
+                output_amount += outgoing_amount;
 
-                // Select what the new exchange state should be
-                new_state.shortage = match in_input_shortage {
-                    Shortage::QuoteShortage => Shortage::BaseShortage,
-                    Shortage::BaseShortage => Shortage::QuoteShortage,
-                    Shortage::Equilibrium => {
-                        if input_is_quote {
-                            Shortage::BaseShortage
-                        } else {
-                            Shortage::QuoteShortage
-                        }
+                // Allocate pool changes
+                match input_is_quote {
+                    true => {
+                        base_base = outgoing_amount;
+                        base_quote = input_amount - amount_traded;
+                    },
+                    false => {
+                        quote_base = input_amount - amount_traded;
+                        quote_quote = outgoing_amount;
                     }
                 };
+                amount_traded = input_amount;
 
-                // Store previous outgoing time stamp
+                // Update pair state variables
                 new_state.last_outgoing = t;
-
-                // Calculate and store previous outgoing spot price
-                let new_actual = output_actual - outgoing_output;
-                new_state.last_spot = match new_state.shortage {
-                    Shortage::BaseShortage => calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out),
-                    Shortage::Equilibrium => p0,
-                    Shortage::QuoteShortage => dec!(1) / calc_spot(virtual_p_ref, output_target, new_actual, self.config.k_out), 
+                let new_actual = actual - outgoing_amount;
+                new_state.target_ratio = target / new_actual;
+                (new_state.shortage, new_state.last_out_spot) = match pool == self.base_pool {
+                    true => (
+                        Shortage::BaseShortage,
+                        calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out)
+                    ),
+                    false => (
+                        Shortage::QuoteShortage,
+                        ONE / calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out)
+                    ),
                 };
+            } else {
+                // Allocate pool changes
+                match input_is_quote {
+                    true => {
+                        base_base = ZERO;
+                        base_quote = ZERO;
+                    },
+                    false => {
+                        quote_base = ZERO;
+                        quote_quote = ZERO;
+                    }
+                };                
             }
 
-            debug!("  Last spot: {}", new_state.last_spot);
-
-            // Apply trading fee
+            // Calculate output variables
             let fee = self.config.fee * output_amount;
+            let remainder = input_amount - amount_traded;
+            let allocation = TradeAllocation{base_base, base_quote, quote_base, quote_quote};
 
-            (output_amount - fee, fee, new_state)
+            (output_amount - fee, remainder, allocation, new_state)
+        }
+
+        // Select which of the liquidity pools and corresponding target ratio we're working with
+        fn select_pool(&self, input_is_quote: bool) -> (Global<TwoResourcePool>, Decimal, bool) {
+            let p_ref = self.state.p0;
+            let p_ref_inv = ONE / p_ref;
+            match (self.state.shortage, input_is_quote) {
+                (Shortage::BaseShortage, true) => (self.base_pool, p_ref, false),
+                (Shortage::BaseShortage, false) => (self.base_pool, p_ref, true),
+                (Shortage::Equilibrium, true) => (self.base_pool, p_ref, false),
+                (Shortage::Equilibrium, false) => (self.quote_pool, p_ref_inv, false),
+                (Shortage::QuoteShortage, true) => (self.quote_pool, p_ref_inv, true),
+                (Shortage::QuoteShortage, false) => (self.quote_pool, p_ref_inv, false),
+            }
+        }
+
+        fn  assess_pool(&self, pool: Global<TwoResourcePool>, target_ratio: Decimal) -> (Decimal, Decimal, Decimal) {
+            let reserves = pool.get_vault_amounts();
+            let actual = *reserves.get_index(0).unwrap().1;
+            let surplus = *reserves.get_index(1).unwrap().1;
+            let shortfall = target_ratio * actual - actual;
+            (actual, surplus, shortfall)
         }
     }
 }

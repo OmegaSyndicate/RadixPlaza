@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::constants::*;
 use crate::events::*;
 use crate::types::PairConfig;
 use crate::pair::plazapair::PlazaPair;
@@ -25,23 +26,31 @@ mod plazadex {
         // Pair location for certain token / lp_token
         dfp2: ResourceAddress,
         blacklist: HashSet<ResourceAddress>,
-        token_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
-        lp_to_token: KeyValueStore<ResourceAddress, ResourceAddress>,
-        dfp2_reserves: KeyValueStore<ResourceAddress, Vault>,
+        address_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
+        pair_to_lps: KeyValueStore<ComponentAddress, (ResourceAddress, ResourceAddress)>,
+        dex_reserves: KeyValueStore<ComponentAddress, (Vault, Vault)>,
         min_dfp2_liquidity: Decimal,
+        pairs_owner: OwnerRole,
     }
 
     impl PlazaDex {
         // Constructor to instantiate and deploy a new pair
         pub fn instantiate_dex(dfp2_address: ResourceAddress, owner_badge: ResourceAddress) -> Global<PlazaDex> {
+            // Reserve address for Actor Virtual Badge
+            let (address_reservation, component_address) =
+                Runtime::allocate_component_address(PlazaPair::blueprint_id());
+            let global_component_caller_badge =
+                NonFungibleGlobalId::global_caller_badge(component_address);
+            
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
                 blacklist: HashSet::new(),
-                token_to_pair: KeyValueStore::new(),
-                lp_to_token: KeyValueStore::new(),
-                dfp2_reserves: KeyValueStore::new(),
+                address_to_pair: KeyValueStore::new(),
+                pair_to_lps: KeyValueStore::new(),
+                dex_reserves: KeyValueStore::new(),
                 min_dfp2_liquidity: dec!(0),
+                pairs_owner: OwnerRole::Fixed(rule!(require(global_component_caller_badge))),
             }
             .instantiate()
             .prepare_to_globalize(
@@ -49,65 +58,109 @@ mod plazadex {
                     rule!(require(owner_badge))
                 )
             )
+            .with_address(address_reservation)
             .globalize()
         }
 
         // Create a new liquidity pair on the exchange
-        pub fn create_pair(&mut self, token: ResourceAddress, dfp2: Bucket, config: PairConfig, p0: Decimal) -> Global<PlazaPair> {
+        pub fn create_pair(
+            &mut self,
+            mut base_bucket: FungibleBucket,
+            mut dfp2_bucket: FungibleBucket,
+            config: PairConfig,
+            p0: Decimal
+        ) -> Global<PlazaPair> {
+            let token = base_bucket.resource_address();
+
             // Ensure all basic criteria are met to add a new pair
             assert!(!self.blacklist.contains(&token), "Token is blacklisted");
-            assert!(dfp2.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
-            assert!(dfp2.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
-            assert!(self.token_to_pair.get(&token).is_none(), "Pair already exists");
+            assert!(dfp2_bucket.resource_address() == self.dfp2, "Need to add DFP2 liquidity");
+            assert!(dfp2_bucket.amount() >= self.min_dfp2_liquidity, "Insufficient DFP2 liquidity");
+            assert!(self.address_to_pair.get(&token).is_none(), "Pair already exists");
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
-            let pair = PlazaPair::instantiate_pair(token, self.dfp2, config, p0);
-            let (lp_base, lp_quote) = pair.get_lp_tokens();
+            let tiny_base_bucket = base_bucket.take(MIN_LIQUIDITY);
+            let tiny_dfp2_bucket = dfp2_bucket.take(MIN_LIQUIDITY);
+            let pair = PlazaPair::instantiate_pair(
+                self.pairs_owner.clone(),
+                tiny_base_bucket,
+                tiny_dfp2_bucket,
+                config,
+                p0
+            );
+
+            // Add liquidity to new pair
+            let base_lp_bucket = pair.add_liquidity(base_bucket.into(), false);
+            let dfp2_lp_bucket = pair.add_liquidity(dfp2_bucket.into(), true);
+            let base_lp_address = base_lp_bucket.resource_address();
+            let dfp2_lp_address = dfp2_lp_bucket.resource_address();
+
+            // Store DEX reserves
+            let pair_address = pair.address();
+            let base_lp_vault = Vault::with_bucket(base_lp_bucket);
+            let dfp2_lp_vault = Vault::with_bucket(dfp2_lp_bucket);
+            self.dex_reserves.insert(pair_address, (base_lp_vault, dfp2_lp_vault));
 
             // Add new pair to database
-            self.token_to_pair.insert(token, pair);
-            self.lp_to_token.insert(lp_base, token);
-            self.lp_to_token.insert(lp_quote, token);
+            self.address_to_pair.insert(token, pair);
+            self.address_to_pair.insert(base_lp_address, pair);
+            self.address_to_pair.insert(dfp2_lp_address, pair);
+            self.pair_to_lps.insert(pair_address, (base_lp_address, dfp2_lp_address));
 
-            if dfp2.amount() > dec!(0) {
-                let lp_tokens = pair.add_liquidity(dfp2);
-                let dfp2_vault = Vault::with_bucket(lp_tokens);
-                self.dfp2_reserves.insert(token, dfp2_vault);
-            }
-
+            // Emit pair creation event
             Runtime::emit_event(PairCreated{base_token: token, config, p0, component: pair});
 
             pair
         }
 
         // Swap tokens
-        pub fn swap(&mut self, tokens: Bucket, output_token: ResourceAddress) -> Bucket {
+        pub fn swap(&mut self, tokens: Bucket, output_token: ResourceAddress) -> (Bucket, Option<Bucket>) {
             let input_token = tokens.resource_address();
-
-            // Verify tokens can be traded at the exchange
             assert!(input_token != output_token, "Can't swap token into itself");
 
             match (input_token == self.dfp2, output_token == self.dfp2) {
                 (true, _) => {
                     // Sell DFP2 (single pair trade)
-                    let pair = self.token_to_pair.get_mut(&output_token).expect("Output token not listed");
+                    let pair = self.address_to_pair.get_mut(&output_token).expect("Output token not listed");
                     pair.swap(tokens)
                 }
                 (_, true) => {
                     // Buy DFP2 (single pair trade)
-                    let pair = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
+                    let pair = self.address_to_pair.get_mut(&input_token).expect("Input token not listed");
                     pair.swap(tokens)
                 }
                 _ => {
                     // Trade two tokens with a hop through DFP2
-                    let dfp2_bucket;
+                    let (dfp2_bucket, remainder);
                     {
-                        let pair1 = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
-                        dfp2_bucket = pair1.swap(tokens);
+                        // Seperate scopes because we can only get one mut at a time
+                        let pair1 = self.address_to_pair.get_mut(&input_token).expect("Input token not listed");
+                        (dfp2_bucket, remainder) = pair1.swap(tokens);
                     }
-                    let pair2 = self.token_to_pair.get_mut(&output_token).expect("Output token not listed");
-                    pair2.swap(dfp2_bucket)
+                    let (output_bucket, dfp2_returned);
+                    {
+                        let pair2 = self.address_to_pair.get_mut(&output_token).expect("Output token not listed");
+                        (output_bucket, dfp2_returned) = pair2.swap(dfp2_bucket);
+                    }
+                    let (undo_bucket, need_to_undo);
+                    if dfp2_returned.is_some() {
+                        need_to_undo = true;
+                        let pair1 = self.address_to_pair.get_mut(&input_token).unwrap();
+                        (undo_bucket, _) = pair1.swap(dfp2_returned.unwrap())
+                    } else {
+                        undo_bucket = Bucket::new(input_token);
+                        need_to_undo = false;
+                    }
+                    match (remainder, need_to_undo) {
+                        (Some(mut remainder_bucket), true) => {
+                            remainder_bucket.put(undo_bucket);
+                            (output_bucket, Some(remainder_bucket))
+                        },
+                        (Some(remainder_bucket), _) => (output_bucket, Some(remainder_bucket)),
+                        (_, true) => (output_bucket, Some(undo_bucket)),
+                        _ => (output_bucket, None),
+                    }
                 }
             }
         }
@@ -115,27 +168,28 @@ mod plazadex {
         // Add liquidity to the exchange
         pub fn add_liquidity(&mut self, tokens: Bucket, base_token: Option<ResourceAddress>) -> Bucket {
             let input_token = tokens.resource_address();
+            let is_quote = input_token == self.dfp2;
 
-            if input_token == self.dfp2 {
-                // Verify base token is provided and listed
-                let base_token = base_token.expect("No base token provided");
+            // Select liquidity pair from database
+            let pair = match (!is_quote, base_token) {
+                (true, _) => self.address_to_pair.get_mut(&input_token).expect("Input token not listed"),
+                (false, Some(token)) => self.address_to_pair.get_mut(&token).expect("Base token not listed"),
+                (false, None) => Runtime::panic("No base token provided".to_string()),
+            };
 
-                // Find corresponding pair and add liquidity
-                let pair = self.token_to_pair.get_mut(&base_token).expect("Base token not listed");
-                pair.add_liquidity(tokens)
-            } else {
-                // Find corresponding pair and add liquidity
-                let pair = self.token_to_pair.get_mut(&input_token).expect("Input token not listed");
-                pair.add_liquidity(tokens)
-            }
+            // Add liquidity and return output
+            pair.add_liquidity(tokens, is_quote)
         }
 
         // Remove liquidity from the exchange
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
+            // Select liquidity pair from database
             let lp_address = lp_tokens.resource_address();
-            let base_address = self.lp_to_token.get(&lp_address).expect("Unknown LP token");
-            let pair = self.token_to_pair.get_mut(&base_address).expect("Pair not found");
-            pair.remove_liquidity(lp_tokens)
+            let pair = self.address_to_pair.get_mut(&lp_address).expect("Unknown LP token");
+            let is_quote = lp_tokens.resource_address() == self.pair_to_lps.get(&pair.address()).expect("Pair not found").1;
+
+            // Remove liquidity from pair and return to caller
+            pair.remove_liquidity(lp_tokens, is_quote)
         }
 
         // Get a quote for swapping two tokens
@@ -144,43 +198,46 @@ mod plazadex {
             assert!(input_token != output_token, "Can't swap token into itself");
 
             match (input_token == self.dfp2, output_token == self.dfp2) {
-                (true, true) => { Runtime::panic("DFP2 <--> DFP2".to_string()) }
+                (true, true) => Runtime::panic("DFP2 <--> DFP2 makes no sene".to_string()),
                 (true, false) => {
                     // Sell DFP2 (single pair trade)
-                    let pair = self.token_to_pair.get(&output_token).expect("Output token not listed");
+                    let pair = self.address_to_pair.get(&output_token).expect("Output token not listed");
                     pair.quote(input_amount, true).0
-                }
+                },
                 (false, true) => {
                     // Buy DFP2 (single pair trade)
-                    let pair = self.token_to_pair.get(&input_token).expect("Input token not listed");
+                    let pair = self.address_to_pair.get(&input_token).expect("Input token not listed");
                     pair.quote(input_amount, false).0
-                }
+                },
                 (false, false) => {
                     // Trade two tokens with a hop through DFP2
-                    let pair1 = self.token_to_pair.get(&input_token).expect("Input token not listed");
+                    let pair1 = self.address_to_pair.get(&input_token).expect("Input token not listed");
                     let dfp2_amount = pair1.quote(input_amount, false).0;
-                    let pair2 = self.token_to_pair.get(&output_token).expect("Output token not listed");
+                    let pair2 = self.address_to_pair.get(&output_token).expect("Output token not listed");
                     pair2.quote(dfp2_amount, true).0
-                }
+                },
             }            
         }
 
         // Read only method returning the LP tokens associated with the pair for a given base token.
         pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
-            let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
-            pair.get_lp_tokens()
+            let pair = self.address_to_pair.get(&base_token).expect("Token not listed");
+            *self.pair_to_lps.get(&pair.address()).expect("Pair not found")
         }
 
         // Removes a currently listed token pair. This prevents it from being routed to by the DEX
-        // but it remains available on the ledger to be called directly.
+        // but it remains available on the ledger for direct operation.
         pub fn delist(&mut self, base_token: ResourceAddress) {
-            let pair = self.token_to_pair.get(&base_token).expect("Token not listed");
-            let (base_lp, quote_lp) = pair.get_lp_tokens();
-            
-            self.lp_to_token.remove(&base_lp);
-            self.lp_to_token.remove(&quote_lp);
-            self.token_to_pair.remove(&base_token);
+            let pair = self.address_to_pair.get(&base_token).expect("Token not listed");
+            let (base_lp, dfp2_lp) = self.get_lp_tokens(base_token);
 
+            // Remove pair from database
+            self.address_to_pair.remove(&base_token);
+            self.address_to_pair.remove(&base_lp);
+            self.address_to_pair.remove(&dfp2_lp);
+            self.pair_to_lps.remove(&pair.address());
+
+            // Emit event
             Runtime::emit_event(TokenDeListed{base_token, component: *pair});
         }
 
@@ -188,11 +245,14 @@ mod plazadex {
         // currently be listed.
         pub fn blacklist(&mut self, token: ResourceAddress) {
             assert!(!self.blacklist.contains(&token), "Token already blacklisted");
-            if self.token_to_pair.get(&token).is_some() {
-                self.delist(token);
-            }
             self.blacklist.insert(token);
 
+            // Delist if currently listed
+            if self.address_to_pair.get(&token).is_some() {
+                self.delist(token);
+            }
+
+            // Emit event
             Runtime::emit_event(TokenBlacklisted{token});
         }
 
@@ -201,6 +261,7 @@ mod plazadex {
             assert!(self.blacklist.contains(&token), "Token not blacklisted");
             self.blacklist.remove(&token);
 
+            // Emit event
             Runtime::emit_event(TokenDeBlacklisted{token});
         }
    }

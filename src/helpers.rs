@@ -5,63 +5,52 @@ use scrypto::prelude::*;
 // For well-formed input (all variables positive, 0<k<=1) the square root exists.
 // Should not panic for any realistic input combination passing the assertions
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
-pub fn calc_target(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
+pub fn calc_target_ratio(p0: Decimal, actual: Decimal, surplus: Decimal, k: Decimal) -> Decimal {
     assert!(p0 > dec!(0), "Invalid p0");
     assert!(actual > dec!(0), "Invalid actual reserves");
     assert!(surplus >= dec!(0), "Invalid surplus amount");
     assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
 
     let radicand = dec!(1) + dec!(4) * k * surplus / p0 / actual;
-    let num = (dec!(2) * k - 1 + radicand.checked_sqrt().unwrap()) * actual;
+    let num = dec!(2) * k - dec!(1) + radicand.checked_sqrt().unwrap();
     num / k / dec!(2)
 }
 
 // Calculate spot price for tokens (disregarding fee) when trading on the curve.
-// Direct implementation of the Dodo price curve equation.
+// Direct implementation of the Dodo price curve equation converted to ratio.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
-pub fn calc_spot(p0: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+pub fn calc_spot(p0: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
     assert!(p0 > dec!(0), "Invalid p0");
-    assert!(target >= actual, "Invalid target reserves");
-    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(target_ratio >= dec!(1), "Invalid target ratio");
     assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
 
-    let target2 = target * target;
-    let actual2 = actual * actual;
-
-    let num = actual2 + k * (target2 - actual2);
-    num / actual2 * p0
+    let ratio2 = target_ratio * target_ratio;
+    (dec!(1) + k * (ratio2 - dec!(1))) * p0
 }
 
 // Calculate equilibrium price from trading curve and known spot price.
 // Based on direct implementation of Dodo spot price curve, rearranged to solve for p0.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
-pub fn calc_p0_from_spot(p_spot: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+pub fn calc_p0_from_spot(p_spot: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
     assert!(p_spot > dec!(0), "Invalid p_spot");
-    assert!(target >= actual, "Invalid target reserves");
-    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(target_ratio >= dec!(1), "Invalid target ratio");
     assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
 
-    let target2 = target * target;
-    let actual2 = actual * actual;
-
-    let den = actual2 + k * (target2 - actual2);
-    actual2 / den * p_spot
+    let ratio2 = target_ratio * target_ratio;
+    p_spot / (dec!(1) + k * (ratio2 - dec!(1)))
 }
 
 // Calculate equilibrium price with the rest of the trading curve parameters given.
 // Rearranges the integrated Dodo spot price curve to solve for p0.
 // Potentially vulnerable to overflow for wildly unrealistic prices / amounts
-pub fn calc_p0_from_surplus(surplus: Decimal, target: Decimal, actual: Decimal, k: Decimal) -> Decimal {
+pub fn calc_p0_from_curve(shortfall: Decimal, surplus: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
+    assert!(shortfall > dec!(0), "Invalid shortfall");
     assert!(surplus > dec!(0), "Invalid surplus");
-    assert!(target >= actual, "Invalid target reserves");
-    assert!(actual > dec!(0), "Invalid actual reserves");
+    assert!(target_ratio >= dec!(1), "Invalid target ratio");
     assert!(k >= dec!("0.001") && k <= dec!(1), "Invalid k");
 
-    // Calculate the shortage of tokens
-    let shortage = target - actual;
-
     // Calculate the price at equilibrium (p0) using the given formula
-    surplus / shortage / (dec!(1) + k * shortage / actual)
+    surplus / shortfall / (dec!(1) + k * (target_ratio - dec!(1)))
 }
 
 // Integrate along the trading curve towards equilibrium to find output corresponding to given input_amount.

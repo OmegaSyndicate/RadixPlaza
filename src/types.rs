@@ -9,38 +9,26 @@ pub enum Shortage {
 
 #[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairState {
-    pub p0: Decimal,                // Equilibrium price
-    pub base_target: Decimal,       // Target amount of base tokens
-    pub quote_target: Decimal,      // Target amount of quote tokens
-    pub shortage: Shortage,         // Current state of the pair
-    pub last_trade: i64,            // Timestamp of last trade
-    pub last_outgoing: i64,         // Timestamp of last outgoing trade
-    pub last_spot: Decimal,         // Last outgoing spot price
-}
-
-impl PairState {
-    pub fn set_output_target(&mut self, output_target: Decimal, input_is_quote: bool) {
-        if input_is_quote {
-            self.base_target = output_target;
-        } else {
-            self.quote_target = output_target;
-        }
-    }
-
-    pub fn set_input_target(&mut self, input_target: Decimal, input_is_quote: bool) {
-        if input_is_quote {
-            self.quote_target = input_target;
-        } else {
-            self.base_target = input_target;
-        }
-    }
+    pub p0: Decimal,                    // Equilibrium price
+    pub shortage: Shortage,             // Current state of the pair
+    pub target_ratio: Decimal,          // Ratio between target and actual
+    pub last_outgoing: i64,             // Timestamp of last outgoing trade
+    pub last_out_spot: Decimal,         // Last outgoing spot price
 }
 
 #[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairConfig {
-    pub k_in: Decimal,              // Ingress price curve exponent
-    pub k_out: Decimal,             // Egress price curve exponent
-    pub fee: Decimal,               // Trading fee
+    pub k_in: Decimal,                  // Ingress price curve exponent
+    pub k_out: Decimal,                 // Egress price curve exponent
+    pub fee: Decimal,                   // Trading fee fraction
+}
+
+#[derive(ScryptoSbor, Copy, Clone)]
+pub struct TradeAllocation {
+    pub base_base: Decimal,             // Change in base tokens from base pool
+    pub base_quote: Decimal,            // Change in quote tokens from base pool
+    pub quote_base: Decimal,            // Change in base tokens from quote pool
+    pub quote_quote: Decimal,           // Change in quote tokens from quote pool
 }
 
 impl fmt::Display for Shortage {
