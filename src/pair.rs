@@ -245,35 +245,40 @@ mod plazapair {
             };
             Runtime::emit_event(SwapEvent{base_amount, quote_amount});
 
-            // Process the trade as per the allocation
-            // TODO: implement other case
+            // Helper function to deposit to a pool
+            fn deposit_to_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
+                if amount > ZERO {
+                    pool.protected_deposit(bucket.take(amount));
+                }   
+            }
+
+            // Helper function to withdraw from a pool
+            fn withdraw_from_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
+                let address = bucket.resource_address();
+                if amount > ZERO {
+                    bucket.put(pool.protected_withdraw(address, amount, WithdrawStrategy::Exact));
+                }
+            }
+
+            // Process the pool allocations
+            let (base_pool, quote_pool) = (&mut self.base_pool, &mut self.quote_pool);
             let output_bucket = match input_is_quote {
-                _ => {
-                    if allocation.base_quote > ZERO {
-                        self.base_pool.protected_deposit(input_bucket.take(allocation.base_quote));
-                    }
-                    if allocation.quote_quote > ZERO {
-                        self.quote_pool.protected_deposit(input_bucket.take(allocation.base_quote));
-                    }
+                true => {
+                    deposit_to_pool(base_pool, &mut input_bucket, allocation.base_quote);
+                    deposit_to_pool(quote_pool, &mut input_bucket, allocation.quote_quote);
+                    
                     let mut bucket = Bucket::new(self.base_address);
-                    if allocation.base_base > ZERO {
-                        bucket.put(
-                            self.base_pool.protected_withdraw(
-                                self.base_address,
-                                allocation.base_base,
-                                WithdrawStrategy::Exact
-                            )
-                        );
-                    }
-                    if allocation.quote_base > ZERO {
-                        bucket.put(
-                            self.quote_pool.protected_withdraw(
-                                self.base_address,
-                                allocation.quote_base,
-                                WithdrawStrategy::Exact
-                            )
-                        );                        
-                    }
+                    withdraw_from_pool(base_pool, &mut bucket, allocation.base_base);
+                    withdraw_from_pool(quote_pool, &mut bucket, allocation.quote_base);
+                    bucket
+                },
+                false => {
+                    deposit_to_pool(base_pool, &mut input_bucket, allocation.base_base);
+                    deposit_to_pool(quote_pool, &mut input_bucket, allocation.quote_base);
+                    
+                    let mut bucket = Bucket::new(self.base_address);
+                    withdraw_from_pool(base_pool, &mut bucket, allocation.base_quote);
+                    withdraw_from_pool(quote_pool, &mut bucket, allocation.quote_quote);
                     bucket
                 }
             };

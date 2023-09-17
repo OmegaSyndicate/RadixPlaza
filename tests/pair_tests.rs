@@ -2,6 +2,7 @@ use defiplaza::pair::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
+//use scrypto::prelude::ScryptoBucket;
 
 #[test]
 fn deploys() -> Result<(), RuntimeError> {
@@ -11,22 +12,23 @@ fn deploys() -> Result<(), RuntimeError> {
 
     let bucket1 = ResourceBuilder::new_fungible(OwnerRole::None) 
         .divisibility(18)
-        .mint_initial_supply(1000, &mut env)?;
+        .mint_initial_supply(10000, &mut env)?.as_fungible();
     let bucket2 = ResourceBuilder::new_fungible(OwnerRole::None) 
         .divisibility(18)
-        .mint_initial_supply(1000, &mut env)?;
+        .mint_initial_supply(10000, &mut env)?.as_fungible();
 
-    let resource_address1 = bucket1.resource_address(&mut env)?; 
-    let resource_address2 = bucket2.resource_address(&mut env)?; 
+    let resource_address1 = bucket1.resource_address();
+    let resource_address2 = bucket2.resource_address();
 
     let config = PairConfig {
         k_in: dec!("0.4"),
         k_out: dec!("1"),
         fee: dec!("0.003"),
     };
-    let mut pair = PlazaPair::instantiate_pair( 
-        resource_address1,
-        resource_address2,
+    let mut pair = PlazaPair::instantiate_pair(
+        OwnerRole::None,
+        bucket1.take(dec!(1000), &mut env)?.as_fungible(),
+        bucket2.take(dec!(1000), &mut env)?.as_fungible(),
         config,
         dec!(1),
         package_address,
@@ -34,10 +36,14 @@ fn deploys() -> Result<(), RuntimeError> {
     )?;
 
     // Act
-    let pool_units = pair.add_liquidity(bucket1, &mut env)?; 
+    let pool_units = pair.add_liquidity(
+        bucket1.take(dec!(100), &mut env)?,
+        false,
+        &mut env
+    )?; 
 
     // Assert
-    assert_eq!(pool_units.amount(&mut env)?, dec!("1000")); 
+    assert_eq!(pool_units.amount()?, dec!("0.1")); 
     Ok(())
 }
 

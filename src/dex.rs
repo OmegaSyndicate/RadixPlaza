@@ -96,6 +96,10 @@ mod plazadex {
             let base_lp_address = base_lp_bucket.resource_address();
             let dfp2_lp_address = dfp2_lp_bucket.resource_address();
 
+            // Set LP tokens metadata
+            let base_lp_manager = ResourceManager::from(base_lp_address);
+            base_lp_manager.set_metadata("symbol", "PLAZALP".to_owned());        
+
             // Store DEX reserves
             let pair_address = pair.address();
             let base_lp_vault = Vault::with_bucket(base_lp_bucket);
