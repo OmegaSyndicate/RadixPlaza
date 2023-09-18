@@ -18,6 +18,7 @@ mod plazadex {
             delist => restrict_to: [OWNER];
             blacklist => restrict_to: [OWNER];
             deblacklist => restrict_to: [OWNER];
+            update_lp_metadata => restrict_to: [OWNER];
             withdraw_owned_liquidity => restrict_to: [OWNER];
         }
     }
@@ -241,7 +242,6 @@ mod plazadex {
             self.address_to_pair.remove(&base_token);
             self.address_to_pair.remove(&base_lp);
             self.address_to_pair.remove(&dfp2_lp);
-            self.pair_to_lps.remove(&pair.address());
 
             // Emit event
             Runtime::emit_event(TokenDeListed{base_token, component: *pair});
@@ -271,9 +271,16 @@ mod plazadex {
             Runtime::emit_event(TokenDeBlacklisted{token});
         }
 
+        // Allows updating the LP token metadata by DEX owner
+        pub fn update_lp_metadata(&mut self, pair: Global<PlazaPair>, key: String, value: String) {
+            let lp_tokens = self.pair_to_lps.get(&pair.address()).expect("Unknown pair");
+            ResourceManager::from(lp_tokens.0).set_metadata(&key, value.to_owned());
+            ResourceManager::from(lp_tokens.1).set_metadata(&key, value);
+        }
+
         // To allow the team to withdraw DEX owned reserves in case of pool migration
         pub fn withdraw_owned_liquidity(&mut self, pair: Global<PlazaPair>) -> (Bucket, Bucket) {
-            let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("No DEX reserves for this pair");
+            let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("Unknown pair");
             (vaults.0.take_all(), vaults.1.take_all())
         }
    }

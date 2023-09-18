@@ -255,21 +255,6 @@ mod plazapair {
             };
             Runtime::emit_event(SwapEvent{base_amount, quote_amount});
 
-            // Helper function to deposit to a pool
-            fn deposit_to_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
-                if amount > ZERO {
-                    pool.protected_deposit(bucket.take(amount));
-                }   
-            }
-
-            // Helper function to withdraw from a pool
-            fn withdraw_from_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
-                let address = bucket.resource_address();
-                if amount > ZERO {
-                    bucket.put(pool.protected_withdraw(address, amount, WithdrawStrategy::Exact));
-                }
-            }
-
             // Process the pool allocations
             let (base_pool, quote_pool) = (&mut self.base_pool, &mut self.quote_pool);
             let output_bucket = match input_is_quote {
