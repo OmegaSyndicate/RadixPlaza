@@ -280,7 +280,9 @@ mod plazapair {
 
             // Adjust pair state and donate the fee
             self.state = new_state;
-            self.donate_to_pool(output_bucket.take(fee), !input_is_quote);
+            if fee > ZERO {
+                self.donate_to_pool(output_bucket.take(fee), !input_is_quote);
+            }
             assert!(output_bucket.amount() == output_amount, "Something doesn't add up");
 
             // Create remainder bucket option
