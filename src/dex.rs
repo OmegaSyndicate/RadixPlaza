@@ -18,6 +18,7 @@ mod plazadex {
             delist => restrict_to: [OWNER];
             blacklist => restrict_to: [OWNER];
             deblacklist => restrict_to: [OWNER];
+            withdraw_owned_liquidity => restrict_to: [OWNER];
         }
     }
 
@@ -267,6 +268,12 @@ mod plazadex {
 
             // Emit event
             Runtime::emit_event(TokenDeBlacklisted{token});
+        }
+
+        // To allow the team to withdraw DEX owned reserves in case of pool migration
+        pub fn withdraw_owned_liquidity(&mut self, pair: Global<PlazaPair>) -> (Bucket, Bucket) {
+            let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("No DEX reserves for this pair");
+            (vaults.0.take_all(), vaults.1.take_all())
         }
    }
 }
