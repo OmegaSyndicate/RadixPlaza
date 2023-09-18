@@ -317,7 +317,7 @@ mod plazapair {
 
             // Update target ratio if the donated token is in shortage
             if in_shortage {
-                let (actual, surplus, shortfall) = self.assess_pool(pool, self.state.target_ratio);
+                let (actual, surplus, shortfall) = self.assess_pool(&pool, self.state.target_ratio);
                 let p_ref_ss = calc_p0_from_curve(shortfall, surplus, self.state.target_ratio, self.config.k_in);
                 let new_actual = actual + donation_bucket.amount();
                 self.state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, surplus, self.config.k_in);
@@ -338,7 +338,7 @@ mod plazapair {
 
             // Check which pool we're workings with and extract relevant values
             let (mut pool, old_pref, incoming) = self.select_pool(input_is_quote);
-            let (mut actual, mut surplus, shortfall) = self.assess_pool(pool, new_state.target_ratio);
+            let (mut actual, mut surplus, shortfall) = self.assess_pool(&pool, new_state.target_ratio);
 
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
@@ -392,19 +392,19 @@ mod plazapair {
                     // Go to equilibrium and switch pool for second leg
                     new_state.shortage = Shortage::Equilibrium;
                     new_state.target_ratio = ONE;
-                    pool = match pool == self.base_pool {
+                    pool = match pool == &self.base_pool {
                         true => {
                             new_state.last_out_spot = p_ref;
                             new_state.p0 = p_ref;
-                            self.quote_pool
+                            &self.quote_pool
                         },
                         false => {
                             new_state.last_out_spot = ONE / p_ref;
                             new_state.p0 = ONE / p_ref;
-                            self.base_pool
+                            &self.base_pool
                         },
                     };
-                    (actual, surplus, _) = self.assess_pool(pool, ONE);
+                    (actual, surplus, _) = self.assess_pool(&pool, ONE);
                 }
             }
 
@@ -422,7 +422,7 @@ mod plazapair {
 
             // Handle the trading away from equilbrium case
             if amount_traded < input_amount && actual > ZERO {
-                let last_outgoing_spot = match pool == self.base_pool {
+                let last_outgoing_spot = match pool == &self.base_pool {
                     true => self.state.last_out_spot,
                     false => ONE / self.state.last_out_spot,
                 };
@@ -461,7 +461,7 @@ mod plazapair {
                 // Update pair state variables
                 new_state.last_outgoing = t;
                 new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
-                (new_state.shortage, new_state.last_out_spot, new_state.p0) = match pool == self.base_pool {
+                (new_state.shortage, new_state.last_out_spot, new_state.p0) = match pool == &self.base_pool {
                     true => (
                         Shortage::BaseShortage,
                         calc_spot(virtual_p_ref, new_state.target_ratio, self.config.k_out),
@@ -492,20 +492,20 @@ mod plazapair {
         }
 
         // Select which of the liquidity pools and corresponding target ratio we're working with
-        fn select_pool(&self, input_is_quote: bool) -> (Global<TwoResourcePool>, Decimal, bool) {
+        fn select_pool(&self, input_is_quote: bool) -> (&Global<TwoResourcePool>, Decimal, bool) {
             let p_ref = self.state.p0;
             let p_ref_inv = ONE / p_ref;
             match (self.state.shortage, input_is_quote) {
-                (Shortage::BaseShortage, true) => (self.base_pool, p_ref, false),
-                (Shortage::BaseShortage, false) => (self.base_pool, p_ref, true),
-                (Shortage::Equilibrium, true) => (self.base_pool, p_ref, false),
-                (Shortage::Equilibrium, false) => (self.quote_pool, p_ref_inv, false),
-                (Shortage::QuoteShortage, true) => (self.quote_pool, p_ref_inv, true),
-                (Shortage::QuoteShortage, false) => (self.quote_pool, p_ref_inv, false),
+                (Shortage::BaseShortage, true) => (&self.base_pool, p_ref, false),
+                (Shortage::BaseShortage, false) => (&self.base_pool, p_ref, true),
+                (Shortage::Equilibrium, true) => (&self.base_pool, p_ref, false),
+                (Shortage::Equilibrium, false) => (&self.quote_pool, p_ref_inv, false),
+                (Shortage::QuoteShortage, true) => (&self.quote_pool, p_ref_inv, true),
+                (Shortage::QuoteShortage, false) => (&self.quote_pool, p_ref_inv, false),
             }
         }
 
-        fn  assess_pool(&self, pool: Global<TwoResourcePool>, target_ratio: Decimal) -> (Decimal, Decimal, Decimal) {
+        fn  assess_pool(&self, pool: &Global<TwoResourcePool>, target_ratio: Decimal) -> (Decimal, Decimal, Decimal) {
             let reserves = pool.get_vault_amounts();
             let actual = *reserves.get_index(0).unwrap().1;
             let surplus = *reserves.get_index(1).unwrap().1;
