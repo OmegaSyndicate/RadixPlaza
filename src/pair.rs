@@ -246,9 +246,9 @@ mod plazapair {
             // Calculate the amount of output tokens and pair impact variables
             let input_amount = input_bucket.amount();
             let input_is_quote = input_bucket.resource_address() == self.quote_address;
-            let (output_amount, _remainder, allocation, new_state) = self.quote(input_amount, input_is_quote);
+            let (output_amount, _remainder, fee, allocation, new_state) = self.quote(input_amount, input_is_quote);
 
-            // Log trade event
+            // Match values to log trade event
             let (base_amount, quote_amount) = match input_is_quote{
                 true => (-output_amount, input_amount),
                 false => (input_amount, -output_amount),
@@ -257,7 +257,7 @@ mod plazapair {
 
             // Process the pool allocations
             let (base_pool, quote_pool) = (&mut self.base_pool, &mut self.quote_pool);
-            let output_bucket = match input_is_quote {
+            let mut output_bucket = match input_is_quote {
                 true => {
                     deposit_to_pool(base_pool, &mut input_bucket, allocation.base_quote);
                     deposit_to_pool(quote_pool, &mut input_bucket, allocation.quote_quote);
@@ -278,9 +278,10 @@ mod plazapair {
                 }
             };
 
-            // Adjust pair state
-            // TODO: Get fee incorporated!
-            self.state = new_state;            
+            // Adjust pair state and donate the fee
+            self.state = new_state;
+            self.donate_to_pool(output_bucket.take(fee), !input_is_quote);
+            assert!(output_bucket.amount() == output_amount, "Something doesn't add up");
 
             // Create remainder bucket option
             let remainder = match input_bucket.is_empty() {
@@ -294,18 +295,50 @@ mod plazapair {
             (output_bucket, remainder)
         }
 
+        // To donate some liquidity to the pair
+        pub fn donate_to_pool(
+            &mut self,
+            donation_bucket: Bucket,
+            donation_is_quote: bool
+        ) {
+            let (address, mut pool, in_shortage) = match donation_is_quote {
+                true => (
+                    self.quote_address,
+                    self.quote_pool,
+                    self.state.shortage == Shortage::QuoteShortage,
+                ),
+                false => (
+                    self.base_address,
+                    self.base_pool,
+                    self.state.shortage == Shortage::BaseShortage,
+                ),
+            };
+            assert!(donation_bucket.resource_address() == address, "Wrong token");
+
+            // Update target ratio if the donated token is in shortage
+            if in_shortage {
+                let (actual, surplus, shortfall) = self.assess_pool(pool, self.state.target_ratio);
+                let p_ref_ss = calc_p0_from_curve(shortfall, surplus, self.state.target_ratio, self.config.k_in);
+                let new_actual = actual + donation_bucket.amount();
+                self.state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, surplus, self.config.k_in);
+            }
+
+            // Transfer the donation to the pool
+            pool.protected_deposit(donation_bucket);
+        }
+
         // Get a quote from the AMM for trading tokens on the pair
         pub fn quote(
             &self,
             input_amount: Decimal,
             input_is_quote: bool
-        ) -> (Decimal, Decimal, TradeAllocation, PairState) {
+        ) -> (Decimal, Decimal, Decimal, TradeAllocation, PairState) {
             assert!(input_amount > ZERO, "Invalid input amount");
             let mut new_state = self.state;
 
             // Check which pool we're workings with and extract relevant values
             let (mut pool, old_pref, incoming) = self.select_pool(input_is_quote);
-            let (mut actual, surplus, shortfall) = self.assess_pool(pool, new_state.target_ratio);
+            let (mut actual, mut surplus, shortfall) = self.assess_pool(pool, new_state.target_ratio);
 
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
@@ -371,7 +404,7 @@ mod plazapair {
                             self.base_pool
                         },
                     };
-                    (actual, _, _) = self.assess_pool(pool, ONE);
+                    (actual, surplus, _) = self.assess_pool(pool, ONE);
                 }
             }
 
@@ -410,7 +443,9 @@ mod plazapair {
                 );
                 output_amount += outgoing_amount;
 
-                // Allocate pool changes
+                // Calculate new values and allocate pool changes
+                let new_actual = actual - outgoing_amount;
+                let new_surplus = surplus + input_amount - amount_traded;
                 match input_is_quote {
                     true => {
                         base_base = outgoing_amount;
@@ -425,8 +460,7 @@ mod plazapair {
 
                 // Update pair state variables
                 new_state.last_outgoing = t;
-                let new_actual = actual - outgoing_amount;
-                new_state.target_ratio = target / new_actual;
+                new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
                 (new_state.shortage, new_state.last_out_spot, new_state.p0) = match pool == self.base_pool {
                     true => (
                         Shortage::BaseShortage,
@@ -454,7 +488,7 @@ mod plazapair {
             let remainder = input_amount - amount_traded;
             let allocation = TradeAllocation{base_base, base_quote, quote_base, quote_quote};
 
-            (output_amount - fee, remainder, allocation, new_state)
+            (output_amount - fee, remainder, fee, allocation, new_state)
         }
 
         // Select which of the liquidity pools and corresponding target ratio we're working with
