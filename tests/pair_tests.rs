@@ -21,6 +21,7 @@ fn deploys() -> Result<(), RuntimeError> {
         k_in: dec!("0.4"),
         k_out: dec!("1"),
         fee: dec!("0.003"),
+        decay_factor: dec!("0.9512"),
     };
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,

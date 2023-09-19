@@ -38,6 +38,7 @@ fn deploys() -> Result<(), RuntimeError> {
         k_in: dec!("0.4"),
         k_out: dec!("1"),
         fee: dec!("0"),
+        decay_factor: dec!("0.9512"),
     };
     dex.create_pair( 
         a_bucket.take(dec!(1000), &mut env)?,

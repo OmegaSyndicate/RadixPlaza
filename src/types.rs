@@ -21,6 +21,7 @@ pub struct PairConfig {
     pub k_in: Decimal,                  // Ingress price curve exponent
     pub k_out: Decimal,                 // Egress price curve exponent
     pub fee: Decimal,                   // Trading fee fraction
+    pub decay_factor: Decimal,          // Price filter decay factor per minute
 }
 
 impl fmt::Display for Shortage {
