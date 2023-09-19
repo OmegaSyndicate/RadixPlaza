@@ -20,6 +20,7 @@ mod plazadex {
             deblacklist => restrict_to: [OWNER];
             update_lp_metadata => restrict_to: [OWNER];
             withdraw_owned_liquidity => restrict_to: [OWNER];
+            set_min_dfp2 => restrict_to: [OWNER];
         }
     }
 
@@ -284,6 +285,11 @@ mod plazadex {
         pub fn withdraw_owned_liquidity(&mut self, pair: Global<PlazaPair>) -> (Bucket, Bucket) {
             let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("Unknown pair");
             (vaults.0.take_all(), vaults.1.take_all())
+        }
+
+        // Update the minimum DFP2 amount required to create a pair
+        pub fn set_min_dfp2(&mut self, min_dfp2: Decimal) {
+            self.min_dfp2_liquidity = min_dfp2;
         }
    }
 }
