@@ -1,0 +1,89 @@
+CREATE_NON_FUNGIBLE_RESOURCE_WITH_INITIAL_SUPPLY
+    Enum<0u8>()
+    Enum<1u8>()
+    true
+    Enum<0u8>(
+        Enum<0u8>(
+            Tuple(
+                Array<Enum>(),
+                Array<Tuple>(),
+                Array<Enum>()
+            )
+        ),
+        Enum<0u8>(
+            66u8
+        ),
+        Array<String>()
+    )
+    Map<NonFungibleLocalId, Tuple>(
+        NonFungibleLocalId("#1#") => Tuple(
+            Tuple()
+        )
+    )
+    Tuple(
+        Enum<0u8>(),
+        Enum<0u8>(),
+        Enum<0u8>(),
+        Enum<0u8>(),
+        Enum<0u8>(),
+        Enum<0u8>(),
+        Enum<0u8>()
+    )
+    Tuple(
+        Map<String, Tuple>(
+            "name" => Tuple(
+                Enum<1u8>(
+                    Enum<0u8>(
+                        "DefiPlaza - dApp Owner Badge"
+                    )
+                ),
+                false
+            ),
+            "description" => Tuple(
+                Enum<1u8>(
+                    Enum<0u8>(
+                        "The owner badge for the DefiPlaza dApp and associated entities"
+                    )
+                ),
+                false
+            ),
+            "tags" => Tuple(
+                Enum<1u8>(
+                    Enum<128u8>(
+                        Array<String>(
+                            "badge",
+                            "dex",
+                            "pool",
+                            "defiplaza"
+                        )
+                    )
+                ),
+                false
+            ),
+            "info_url" => Tuple(
+                Enum<1u8>(
+                    Enum<13u8>(
+                        "https://radix.defiplaza.net/"
+                    )
+                ),
+                false
+            ),
+            "icon_url" => Tuple(
+                Enum<1u8>(
+                    Enum<13u8>(
+                        "https://static.defiplaza.net/website/uploads/2022/02/23175825/twitter-profile-400x400-1.png"
+                    )
+                ),
+                false
+            )
+        ),
+        Map<String, Enum>()
+    )
+    Enum<0u8>()
+;
+CALL_METHOD
+    Address("account_tdx_e_12x7vssnu3as0eye7ezz2mrqdqf6ptn5c2v74fklmq7fc5hkvfww48e")
+    "try_deposit_batch_or_abort"
+    Expression("ENTIRE_WORKTOP")
+    Enum<0u8>()
+;
