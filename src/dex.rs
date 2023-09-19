@@ -101,9 +101,9 @@ mod plazadex {
 
             // Set LP tokens metadata
             let base_lp_manager = ResourceManager::from(base_lp_address);
-            let quote_lp_manager = ResourceManager::from(base_lp_address);
+            let dfp2_lp_manager = ResourceManager::from(dfp2_lp_address);
             base_lp_manager.set_metadata("symbol", "BASELP".to_owned());
-            quote_lp_manager.set_metadata("symbol", "QUOTELP".to_owned());
+            dfp2_lp_manager.set_metadata("symbol", "DFP2LP".to_owned());
 
             // Store DEX reserves
             let pair_address = pair.address();

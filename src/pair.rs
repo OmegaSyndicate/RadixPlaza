@@ -35,6 +35,7 @@ mod plazapair {
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
             assert!(config.k_out == ONE || config.k_out < CLIP_K_OUT, "Invalid k_out value");
             assert!(config.fee >= ZERO && config.fee < ONE, "Invalid fee level");
+            assert!(config.decay_factor >= ZERO && config.decay_factor < ONE, "Invalid decay factor");
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
@@ -168,7 +169,7 @@ mod plazapair {
                     // Compute time since previous trade and resulting decay factor for the filter
                     let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
                     let delta_t = (t - self.state.last_outgoing).max(0);
-                    let factor = Decimal::checked_powi(&DECAY_FACTOR, delta_t / 60).unwrap();
+                    let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
 
                     // Caculate the filtered reference price
                     let old_pref = match is_quote {
@@ -344,7 +345,7 @@ mod plazapair {
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             let delta_t = (t - self.state.last_outgoing).max(0);
-            let factor = Decimal::checked_powi(&DECAY_FACTOR, delta_t / 60).unwrap();
+            let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
 
             // Caculate the filtered reference price
             let mut p_ref_ss = calc_p0_from_curve(shortfall, surplus, new_state.target_ratio, self.config.k_in);
@@ -508,8 +509,8 @@ mod plazapair {
 
         fn  assess_pool(&self, pool: &Global<TwoResourcePool>, target_ratio: Decimal) -> (Decimal, Decimal, Decimal) {
             let reserves = pool.get_vault_amounts();
-            let actual = *reserves.get_index(0).unwrap().1;
-            let surplus = *reserves.get_index(1).unwrap().1;
+            let actual = *reserves.get_index(0).map(|(_addr, amount)| amount).unwrap();
+            let surplus = *reserves.get_index(1).map(|(_addr, amount)| amount).unwrap();
             let shortfall = target_ratio * actual - actual;
             (actual, surplus, shortfall)
         }
