@@ -71,7 +71,7 @@ pub fn calc_incoming(
     assert!(p0 > ZERO, "Invalid reference price");
     assert!(k_in >= MIN_K_IN && k_in <= ONE, "Invalid k_in");
     assert!(actual + input_amount <= target, "Infeasible combination");
-    
+
     // Calculate the expected surplus values
     let actual_after = actual + input_amount;
     let surplus_before = (target - actual) * p0 * (ONE + k_in * (target - actual) / actual);
@@ -136,7 +136,7 @@ pub fn calc_outgoing(
 pub fn deposit_to_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
     if amount > ZERO {
         pool.protected_deposit(bucket.take(amount));
-    }   
+    }
 }
 
 // Helper function to withdraw from a pool

@@ -44,7 +44,7 @@ mod plazadex {
                 Runtime::allocate_component_address(PlazaDex::blueprint_id());
             let global_component_caller_badge =
                 NonFungibleGlobalId::global_caller_badge(component_address);
-            
+
             // Instantiate a PlazaDex component
             Self {
                 dfp2: dfp2_address,
@@ -226,7 +226,7 @@ mod plazadex {
                     let pair2 = self.address_to_pair.get(&output_token).expect("Output token not listed");
                     pair2.quote(dfp2_amount, true).0
                 },
-            }            
+            }
         }
 
         // Read only method returning the LP tokens associated with the pair for a given base token.

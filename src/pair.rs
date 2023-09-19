@@ -18,7 +18,7 @@ mod plazapair {
         min_liquidity: HashMap<                          
             ComponentAddress,                       // For both pools counter token:
             Vault                                   //  hold a tiny amount to temp add when empty
-        >,  
+        >,
     }
 
     impl PlazaPair {
