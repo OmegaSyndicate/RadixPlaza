@@ -105,14 +105,14 @@ mod plazapair {
             is_quote: bool,
         ) -> Bucket {
             // Retrieve appropriate liquidity pool
-            let (mut pool, in_shortage) = match is_quote {
+            let (pool, in_shortage) = match is_quote {
                 true => {
                     let in_shortage = self.state.shortage == Shortage::QuoteShortage;
-                    (self.quote_pool, in_shortage)
+                    (&mut self.quote_pool, in_shortage)
                 }
                 false => {
                     let in_shortage = self.state.shortage == Shortage::BaseShortage;
-                    (self.base_pool, in_shortage)
+                    (&mut self.base_pool, in_shortage)
                 }
             };
 
@@ -222,9 +222,9 @@ mod plazapair {
         // Exchange LP tokens for the underlying liquidity held in the pair
         pub fn remove_liquidity(&mut self, lp_bucket: Bucket, is_quote: bool) -> (Bucket, Bucket) {
             // Get corresponding pool component
-            let mut pool = match is_quote {
-                true => self.quote_pool,
-                false => self.base_pool,
+            let pool = match is_quote {
+                true => &mut self.quote_pool,
+                false => &mut self.base_pool,
             };
 
             // Retrieve liquidity and return to the caller
@@ -303,30 +303,29 @@ mod plazapair {
             donation_bucket: Bucket,
             donation_is_quote: bool
         ) {
-            let (address, mut pool, in_shortage) = match donation_is_quote {
-                true => (
-                    self.quote_address,
-                    self.quote_pool,
-                    self.state.shortage == Shortage::QuoteShortage,
-                ),
-                false => (
-                    self.base_address,
-                    self.base_pool,
-                    self.state.shortage == Shortage::BaseShortage,
-                ),
+            let (address, in_shortage) = match donation_is_quote {
+                true => (self.quote_address, self.state.shortage == Shortage::QuoteShortage),
+                false => (self.base_address, self.state.shortage == Shortage::BaseShortage),
             };
             assert!(donation_bucket.resource_address() == address, "Wrong token");
 
             // Update target ratio if the donated token is in shortage
             if in_shortage {
-                let (actual, surplus, shortfall) = self.assess_pool(&pool, self.state.target_ratio);
-                let p_ref_ss = calc_p0_from_curve(shortfall, surplus, self.state.target_ratio, self.config.k_in);
+                let target_ratio = self.state.target_ratio;
+                let (actual, surplus, shortfall) = match donation_is_quote {
+                    true => self.assess_pool(&self.quote_pool, target_ratio),
+                    false => self.assess_pool(&self.base_pool, target_ratio),
+                }; 
+                let p_ref_ss = calc_p0_from_curve(shortfall, surplus, target_ratio, self.config.k_in);
                 let new_actual = actual + donation_bucket.amount();
                 self.state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, surplus, self.config.k_in);
             }
 
             // Transfer the donation to the pool
-            pool.protected_deposit(donation_bucket);
+            match donation_is_quote {
+                true => &self.quote_pool.protected_deposit(donation_bucket),
+                false => &self.base_pool.protected_deposit(donation_bucket),
+            };
         }
 
         // Get a quote from the AMM for trading tokens on the pair
