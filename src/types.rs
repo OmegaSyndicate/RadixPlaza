@@ -23,14 +23,6 @@ pub struct PairConfig {
     pub fee: Decimal,                   // Trading fee fraction
 }
 
-#[derive(ScryptoSbor, Copy, Clone)]
-pub struct TradeAllocation {
-    pub base_base: Decimal,             // Change in base tokens from base pool
-    pub base_quote: Decimal,            // Change in quote tokens from base pool
-    pub quote_base: Decimal,            // Change in base tokens from quote pool
-    pub quote_quote: Decimal,           // Change in quote tokens from quote pool
-}
-
 impl fmt::Display for Shortage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
