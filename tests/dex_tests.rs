@@ -2,6 +2,7 @@ use defiplaza::dex::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
+use scrypto::prelude::Url;
 
 #[test]
 fn deploys() -> Result<(), RuntimeError> {
@@ -45,6 +46,7 @@ fn deploys() -> Result<(), RuntimeError> {
         dfp2_bucket.take(dec!(1000), &mut env)?,
         config,
         dec!(1),
+        (Url::of("http://defiplaza.net/assets/images/tokens/dfp2.svg"), Url::of("http://defiplaza.net/assets/images/tokens/dfp2.svg")),
         &mut env,
     )?;
     dex.create_pair( 
@@ -52,6 +54,7 @@ fn deploys() -> Result<(), RuntimeError> {
         dfp2_bucket.take(dec!(1000), &mut env)?,
         config,
         dec!(1),
+        (Url::of("http://defiplaza.net/assets/images/tokens/dfp2.svg"), Url::of("http://defiplaza.net/assets/images/tokens/dfp2.svg")),
         &mut env,
     )?;
 
