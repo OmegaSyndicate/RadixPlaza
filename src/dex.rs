@@ -70,7 +70,8 @@ mod plazadex {
             mut base_bucket: Bucket,
             mut dfp2_bucket: Bucket,
             config: PairConfig,
-            p0: Decimal
+            p0: Decimal,
+            icons: (Url, Url),
         ) -> Global<PlazaPair> {
             let token = base_bucket.resource_address();
 
@@ -99,11 +100,22 @@ mod plazadex {
             let base_lp_address = base_lp_bucket.resource_address();
             let dfp2_lp_address = dfp2_lp_bucket.resource_address();
 
-            // Set LP tokens metadata
+            // Set name for LP tokens
+            let base_manager = ResourceManager::from(token);
+            let symbol = base_manager.get_metadata("symbol")
+                .unwrap_or(Some("XXXXX".to_owned())).unwrap_or("XXXXX".to_owned());
+            let base_name = format!("Defiplaza {}-DFP2 liquidity", symbol);
+            let quote_name = format!("Defiplaza DFP2-{} liquidity", symbol);
+
+            // Assign metadata
             let base_lp_manager = ResourceManager::from(base_lp_address);
             let dfp2_lp_manager = ResourceManager::from(dfp2_lp_address);
             base_lp_manager.set_metadata("symbol", "BASELP".to_owned());
             dfp2_lp_manager.set_metadata("symbol", "DFP2LP".to_owned());
+            base_lp_manager.set_metadata("name", base_name);
+            dfp2_lp_manager.set_metadata("name", quote_name);
+            base_lp_manager.set_metadata("icon_url", icons.0);
+            dfp2_lp_manager.set_metadata("icon_url", icons.1);
 
             // Store DEX reserves
             let pair_address = pair.address();
