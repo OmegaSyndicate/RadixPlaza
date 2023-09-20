@@ -120,11 +120,32 @@ mod plazapair {
             let lp_bucket = match reserve == ZERO {
                 // No liquidity present, this is the first to be added
                 true => {
+                    // Do initial contribution
+                    let input_address = input_bucket.resource_address();
                     let (lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
+
+                    // Beef up LP tokens by a factor of 10000 for non-technical reasons
+                    let scale_bucket_input = pool.protected_withdraw(
+                        input_address,
+                        MIN_LIQUIDITY * (TEN_THOUSAND - ONE) / TEN_THOUSAND,
+                        WithdrawStrategy::Exact
+                    );
+                    let scale_bucket_minliq = pool.protected_withdraw(
+                        min_liq_addr,
+                        MIN_LIQUIDITY * (TEN_THOUSAND - ONE) / TEN_THOUSAND,
+                        WithdrawStrategy::Exact
+                    );
+                    let (mut scale_lp, remainder) = pool.contribute((scale_bucket_input, scale_bucket_minliq));
+                    if let Some(bucket) = remainder {
+                        pool.protected_deposit(bucket);
+                    }
+
+                    // Stash the min liquidity and return the LP tokens
                     min_liq.put(
                         pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
                     );
-                    lp_tokens
+                    scale_lp.put(lp_tokens);
+                    scale_lp
                 }
                 // Add in ratio
                 false => {
