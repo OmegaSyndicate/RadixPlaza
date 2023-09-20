@@ -288,11 +288,11 @@ mod plazapair {
 
             // Create remainder bucket option
             let remainder = match input_bucket.is_empty() {
-                true => Some(input_bucket),
-                false => {
+                true => {
                     input_bucket.drop_empty();
                     None
-                }
+                },
+                false => Some(input_bucket),
             };
 
             (output_bucket, remainder)
@@ -348,7 +348,10 @@ mod plazapair {
             let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
 
             // Caculate the filtered reference price
-            let mut p_ref_ss = calc_p0_from_curve(shortfall, surplus, new_state.target_ratio, self.config.k_in);
+            let mut p_ref_ss = match shortfall > ZERO {
+                true => calc_p0_from_curve(shortfall, surplus, new_state.target_ratio, self.config.k_in),
+                false => old_pref,
+            };
             let p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
 
             // Define running counters
