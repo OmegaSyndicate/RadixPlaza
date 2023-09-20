@@ -59,9 +59,7 @@ fn deploys() -> Result<(), RuntimeError> {
     )?;
 
     // Act
-    let _ = dex.add_liquidity(a_bucket, None, &mut env)?;
-    let _ = dex.add_liquidity(b_bucket, None, &mut env)?;
-    let _ = dex.add_liquidity(dfp2_bucket, Some(a_token_address), &mut env)?;
+    let _ = dex.swap(a_bucket, b_token_address, &mut env)?;
 
     // Assert
     Ok(())
