@@ -252,7 +252,7 @@ mod plazapair {
             let reserves = pool.get_vault_amounts();
             let available = *reserves.get_index(0).unwrap().1;
 
-            let amount = input_amount.max(available);
+            let amount = input_amount.min(available);
             let remainder = input_amount - amount;
             let fee = ZERO;
 
