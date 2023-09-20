@@ -156,31 +156,32 @@ mod plazadex {
                     // Trade two tokens with a hop through DFP2
                     let (dfp2_bucket, remainder);
                     {
-                        // Seperate scopes because we can only get one mut at a time
                         let pair1 = self.address_to_pair.get_mut(&input_token).expect("Input token not listed");
                         (dfp2_bucket, remainder) = pair1.swap(tokens);
                     }
+
+                    // Second hop, separate scope due to mutability rules
                     let (output_bucket, dfp2_returned);
                     {
                         let pair2 = self.address_to_pair.get_mut(&output_token).expect("Output token not listed");
                         (output_bucket, dfp2_returned) = pair2.swap(dfp2_bucket);
                     }
-                    let (undo_bucket, need_to_undo);
-                    if dfp2_returned.is_some() {
-                        need_to_undo = true;
+                    
+                    // Swap back the dfp2 that we couldn't trade
+                    let change_bucket = dfp2_returned.and_then(|bucket| {
                         let pair1 = self.address_to_pair.get_mut(&input_token).unwrap();
-                        (undo_bucket, _) = pair1.swap(dfp2_returned.unwrap())
-                    } else {
-                        undo_bucket = Bucket::new(input_token);
-                        need_to_undo = false;
-                    }
-                    match (remainder, need_to_undo) {
-                        (Some(mut remainder_bucket), true) => {
-                            remainder_bucket.put(undo_bucket);
-                            (output_bucket, Some(remainder_bucket))
+                        let (change, _) = pair1.swap(bucket);
+                        Some(change)
+                    });
+
+                    // Combine returned buckets
+                    match (remainder, change_bucket) {
+                        (Some(bucket1), Some(mut bucket2)) => {
+                            bucket2.put(bucket1);
+                            (output_bucket, Some(bucket2))
                         },
-                        (Some(remainder_bucket), _) => (output_bucket, Some(remainder_bucket)),
-                        (_, true) => (output_bucket, Some(undo_bucket)),
+                        (Some(bucket1), _) => (output_bucket, Some(bucket1)),
+                        (_, Some(bucket2)) => (output_bucket, Some(bucket2)),
                         _ => (output_bucket, None),
                     }
                 }
