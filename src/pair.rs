@@ -208,11 +208,11 @@ mod plazapair {
 
             // Create remainder bucket option
             let remainder = match input_bucket.is_empty() {
-                true => Some(input_bucket),
-                false => {
+                true => {
                     input_bucket.drop_empty();
                     None
-                }
+                },
+                false => Some(input_bucket),
             };
 
             (output_bucket, remainder)
