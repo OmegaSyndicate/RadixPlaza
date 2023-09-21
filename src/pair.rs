@@ -272,7 +272,7 @@ mod plazapair {
                     deposit_to_pool(base_pool, &mut input_bucket, allocation.base_base);
                     deposit_to_pool(quote_pool, &mut input_bucket, allocation.quote_base);
                     
-                    let mut bucket = Bucket::new(self.base_address);
+                    let mut bucket = Bucket::new(self.quote_address);
                     withdraw_from_pool(base_pool, &mut bucket, allocation.base_quote);
                     withdraw_from_pool(quote_pool, &mut bucket, allocation.quote_quote);
                     bucket

@@ -57,7 +57,7 @@ fn deploys() -> Result<(), RuntimeError> {
     )?;
 
     // Act
-    //let _ = dex.swap(a_bucket.take(dec!(1), &mut env)?, b_token_address, &mut env)?;
+    let _ = dex.swap(a_bucket.take(dec!(1), &mut env)?, b_token_address, &mut env)?;
 
     // Assert
     Ok(())
