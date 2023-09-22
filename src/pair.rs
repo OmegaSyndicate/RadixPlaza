@@ -124,24 +124,42 @@ mod plazapair {
             let mut tiny_bucket = min_liq.take(MIN_LIQUIDITY);
 
             let lp_bucket = match (reserve == ZERO, in_shortage) {
-                // No liquidity present, this is the first to be added
-                (true, false) => {
-                    let (lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
-                    min_liq.put(
-                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
-                    );
-                    lp_tokens
-                }
-                // Someone took out all remaining liquidity while in shortage
-                (true, true) => {
-                    self.state.shortage = Shortage::Equilibrium;
-                    self.state.target_ratio = ONE;
-                    self.state.last_out_spot = self.state.p0;
+                // No liquidity present at the moment
+                (true, _) => {
+                    // Reset to equilbrium if this token was in shortage
+                    if in_shortage {
+                        self.state.shortage = Shortage::Equilibrium;
+                        self.state.target_ratio = ONE;
+                        self.state.last_out_spot = self.state.p0;
+                    }
 
-                    let (lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
+                    // Simply add the tokens plus the min_liq bucket first
+                    let input_address = input_bucket.resource_address();
+                    let (mut lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
+
+                    // Beef up amount of LP tokens by a factor of 1000 for non-technical reasons
+                    let scale_bucket_input = pool.protected_withdraw(
+                        input_address,
+                        input_amount * (ONE_THOUSAND - ONE) / ONE_THOUSAND,
+                        WithdrawStrategy::Exact
+                    );
+                    let scale_bucket_minliq = pool.protected_withdraw(
+                        min_liq_addr,
+                        MIN_LIQUIDITY * (ONE_THOUSAND - ONE) / ONE_THOUSAND,
+                        WithdrawStrategy::Exact
+                    );
+                    let (scale_lp, remainder) = pool.contribute((scale_bucket_input, scale_bucket_minliq));
+                    if let Some(bucket) = remainder {
+                        pool.protected_deposit(bucket);
+                    }
+
+                    // Take back the min_liq and put it back into the vault
                     min_liq.put(
                         pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
                     );
+
+                    // Return the collected LP tokens to the user
+                    lp_tokens.put(scale_lp);
                     lp_tokens
                 }
                 // Not in shortage, can just add in ratio
