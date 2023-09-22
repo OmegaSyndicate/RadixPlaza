@@ -38,7 +38,6 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, false, &mut env)?;
     let lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, true, &mut env)?;
-    //println!("LP amount: {}", lp_tokens.amount(&mut env)?);
 
     Ok(func(env, &mut pair, base_bucket, quote_bucket)?)
 }
@@ -54,6 +53,39 @@ fn swaps() -> Result<(), RuntimeError> {
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(base_bucket.take(dec!(1), &mut env)?, &mut env)?;
+        Ok(())
+    })?;
+    Ok(())
+}
+
+#[test]
+fn swaps_correct_amount() -> Result<(), RuntimeError> {
+    let _ = publish_and_setup(|
+        mut env: TestEnvironment, 
+        pair: &mut PlazaPair,
+        base_bucket: Bucket,
+        _quote_bucket: Bucket,
+    | -> Result<(), RuntimeError> {
+        let (swap, _) = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;
+        assert!(swap.amount(&mut env)? == dec!(750), "Incorrect return amount");
+        Ok(())
+    })?;
+    Ok(())
+}
+
+#[test]
+fn double_swaps_to_correct_amount() -> Result<(), RuntimeError> {
+    let _ = publish_and_setup(|
+        mut env: TestEnvironment, 
+        pair: &mut PlazaPair,
+        base_bucket: Bucket,
+        _quote_bucket: Bucket,
+    | -> Result<(), RuntimeError> {
+        let (swap1, _) = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let (swap2, _) = pair.swap(base_bucket.take(dec!(2000), &mut env)?, &mut env)?;
+        let total_amount = swap1.amount(&mut env)? + swap2.amount(&mut env)?;
+        println!("{}", format!("Total amount: {}", total_amount));
+        assert!(total_amount == dec!(750), "Incorrect return amount");
         Ok(())
     })?;
     Ok(())
