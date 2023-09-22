@@ -127,7 +127,7 @@ mod plazapair {
                     // Beef up LP tokens by a factor of 10000 for non-technical reasons
                     let scale_bucket_input = pool.protected_withdraw(
                         input_address,
-                        MIN_LIQUIDITY * (TEN_THOUSAND - ONE) / TEN_THOUSAND,
+                        input_amount * (TEN_THOUSAND - ONE) / TEN_THOUSAND,
                         WithdrawStrategy::Exact
                     );
                     let scale_bucket_minliq = pool.protected_withdraw(
