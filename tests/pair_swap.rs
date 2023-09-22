@@ -59,7 +59,7 @@ fn swaps() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn swaps_correct_amount() -> Result<(), RuntimeError> {
+fn swaps_to_correct_amount() -> Result<(), RuntimeError> {
     let _ = publish_and_setup(|
         mut env: TestEnvironment, 
         pair: &mut PlazaPair,

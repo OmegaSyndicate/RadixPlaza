@@ -358,7 +358,7 @@ mod plazapair {
 
             // Check which pool we're workings with and extract relevant values
             let (mut pool, old_pref, incoming) = self.select_pool(input_is_quote);
-            let (mut actual, mut surplus, shortfall) = self.assess_pool(&pool, new_state.target_ratio);
+            let (mut actual, surplus, shortfall) = self.assess_pool(&pool, new_state.target_ratio);
 
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
@@ -407,12 +407,12 @@ mod plazapair {
                     let new_surplus = surplus - output_amount;
                     new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
                 } else {
-                    // Update running parameters
+                    // Update running parameters for possible outgoing leg
                     output_amount = surplus;
                     amount_traded = adjusted_shortfall;
                     p_ref_ss = ONE / p_ref;    
 
-                    // Go to equilibrium and switch pool for second leg
+                    // Set to equilibrium and switch pools for outgoing leg
                     new_state.shortage = Shortage::Equilibrium;
                     new_state.target_ratio = ONE;
                     pool = match pool == &self.base_pool {
@@ -427,7 +427,7 @@ mod plazapair {
                             &self.base_pool
                         },
                     };
-                    (actual, surplus, _) = self.assess_pool(&pool, ONE);
+                    (actual, _, _) = self.assess_pool(&pool, ONE);
                 }
             }
 
@@ -468,7 +468,6 @@ mod plazapair {
 
                 // Calculate new values and allocate pool changes
                 let new_actual = actual - outgoing_amount;
-                let new_surplus = surplus + input_amount - amount_traded;
                 match input_is_quote {
                     true => {
                         base_base = outgoing_amount;
@@ -481,9 +480,9 @@ mod plazapair {
                 };
                 amount_traded = input_amount;
 
-                // Update pair state variables
+                // Update pair state variables. Target stays the same, but ratio needs to be updated.
                 new_state.last_outgoing = t;
-                new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
+                new_state.target_ratio = target / new_actual;
                 (new_state.shortage, new_state.last_out_spot, new_state.p0) = match pool == &self.base_pool {
                     true => (
                         Shortage::BaseShortage,

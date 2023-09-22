@@ -2,7 +2,7 @@ use defiplaza::dex::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
-use scrypto::prelude::Url;
+//use scrypto::prelude::Url;
 
 #[test]
 fn deploys() -> Result<(), RuntimeError> {
