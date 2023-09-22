@@ -317,7 +317,7 @@ mod plazapair {
         }
 
         // To donate some liquidity to the pair
-        pub fn donate_to_pool(
+        fn donate_to_pool(
             &mut self,
             donation_bucket: Bucket,
             donation_is_quote: bool
@@ -335,9 +335,10 @@ mod plazapair {
                     true => self.assess_pool(&self.quote_pool, target_ratio),
                     false => self.assess_pool(&self.base_pool, target_ratio),
                 }; 
-                let p_ref_ss = calc_p0_from_curve(shortfall, surplus, target_ratio, self.config.k_in);
-                let new_actual = actual + donation_bucket.amount();
-                self.state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, surplus, self.config.k_in);
+                let donation_amount = donation_bucket.amount();
+                let new_actual = actual + donation_amount;
+                let new_target = target_ratio * actual + donation_amount;
+                self.state.target_ratio = new_target / new_actual;
             }
 
             // Transfer the donation to the pool
