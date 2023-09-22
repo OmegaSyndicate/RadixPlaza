@@ -331,7 +331,7 @@ mod plazapair {
             // Update target ratio if the donated token is in shortage
             if in_shortage {
                 let target_ratio = self.state.target_ratio;
-                let (actual, surplus, shortfall) = match donation_is_quote {
+                let (actual, _surplus, _shortfall) = match donation_is_quote {
                     true => self.assess_pool(&self.quote_pool, target_ratio),
                     false => self.assess_pool(&self.base_pool, target_ratio),
                 }; 
