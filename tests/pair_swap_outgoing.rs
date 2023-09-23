@@ -134,7 +134,7 @@ fn double_swaps_to_correct_amount() -> Result<(), RuntimeError> {
         let (swap1, _) = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         let (swap2, _) = pair.swap(base_bucket.take(dec!(2000), &mut env)?, &mut env)?;
         let total_amount = swap1.amount(&mut env)? + swap2.amount(&mut env)?;
-        println!("{}", format!("Total amount: {}", total_amount));
+        //println!("{}", format!("Total amount: {}", total_amount));
         assert!(total_amount == dec!(750), "Incorrect return amount");
         Ok(())
     })

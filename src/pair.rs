@@ -358,12 +358,12 @@ mod plazapair {
             let mut new_state = self.state;
 
             // Check which pool we're workings with and extract relevant values
-            let (mut pool, old_pref, incoming) = self.select_pool(input_is_quote);
+            let (mut pool, old_pref, incoming) = self.select_pool(&new_state, input_is_quote);
             let (mut actual, surplus, shortfall) = self.assess_pool(&pool, new_state.target_ratio);
 
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-            let delta_t = (t - self.state.last_outgoing).max(0);
+            let delta_t = (t - new_state.last_outgoing).max(0);
             let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
 
             // Caculate the filtered reference price
@@ -403,7 +403,7 @@ mod plazapair {
                     );
                     amount_traded = input_amount;
 
-                    // Update target ratio
+                    // Update target ratio (mop up excess surplus tokens into target)
                     let new_actual = actual + input_amount;
                     let new_surplus = surplus - output_amount;
                     new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
@@ -428,7 +428,8 @@ mod plazapair {
                             &self.base_pool
                         },
                     };
-                    (actual, _, _) = self.assess_pool(&pool, ONE);
+                    let reserves = pool.get_vault_amounts();
+                    actual = *reserves.get_index(0).map(|(_addr, amount)| amount).unwrap();                    
                 }
             }
 
@@ -447,8 +448,8 @@ mod plazapair {
             // Handle the trading away from equilbrium case
             if amount_traded < input_amount && actual > ZERO {
                 let last_outgoing_spot = match pool == &self.base_pool {
-                    true => self.state.last_out_spot,
-                    false => ONE / self.state.last_out_spot,
+                    true => new_state.last_out_spot,
+                    false => ONE / new_state.last_out_spot,
                 };
 
                 // Calibrate outgoing price curve to filtered spot price.
@@ -515,10 +516,10 @@ mod plazapair {
         }
 
         // Select which of the liquidity pools and corresponding target ratio we're working with
-        fn select_pool(&self, input_is_quote: bool) -> (&Global<TwoResourcePool>, Decimal, bool) {
-            let p_ref = self.state.p0;
+        fn select_pool(&self, state: &PairState, input_is_quote: bool) -> (&Global<TwoResourcePool>, Decimal, bool) {
+            let p_ref = state.p0;
             let p_ref_inv = ONE / p_ref;
-            match (self.state.shortage, input_is_quote) {
+            match (state.shortage, input_is_quote) {
                 (Shortage::BaseShortage, true) => (&self.base_pool, p_ref, false),
                 (Shortage::BaseShortage, false) => (&self.base_pool, p_ref, true),
                 (Shortage::Equilibrium, true) => (&self.base_pool, p_ref, false),
