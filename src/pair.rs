@@ -7,21 +7,64 @@ use crate::types::*;
 #[blueprint]
 #[events(SwapEvent, AddLiquidityEvent, RemoveLiquidityEvent)]
 mod plazapair {
-    // PlazaPair struct represents a liquidity pair in the trading platform
+    /// `PlazaPair` struct represents a liquidity pair with fixed configuration
+    ///
+    /// ## Description
+    ///
+    /// The pair is a generalization of the Dodo liquidity pool. It allows users to trade between a BASE token
+    /// and a QUOTE token, as well as supply liquidity to it. It keeps track of BASE and QUOTE liquidity separately,
+    /// always pushing the pool back towards equilibrium. The key mechanism that it uses to achieve this is by varying
+    /// the degree of liquidity concentration on trades depending on their direction wrt equilibrium.
+    ///
+    /// A minimum liquidity map (`min_liquidity`) is maintained to hold tiny amounts of tokens to work around
+    /// restrictions of the native Radix LP components.
+    ///
+    /// This struct also stores configuration and state information for this pair.
     struct PlazaPair {
-        config: PairConfig,                         // Pool configuration
-        state: PairState,                           // Pool parameters
-        base_address: ResourceAddress,              // Base token address
-        quote_address: ResourceAddress,             // Quote token address
-        base_pool: Global<TwoResourcePool>,         // Holds base tokens plus some quote tokens
-        quote_pool: Global<TwoResourcePool>,        // Holds quote tokens plus some base tokens
+        /// Pool configuration details like fee and other operational parameters.
+        config: PairConfig,
+        /// Contains dynamic values like the reference price and target ratio.
+        state: PairState,
+        /// ResourceAddress for the base token in the pair.
+        base_address: ResourceAddress,
+        /// ResourceAddress for the quote token in the pair.
+        quote_address: ResourceAddress,
+        /// Represents a pool that primarily holds base tokens plus potentially some quote tokens held in their place.  
+        base_pool: Global<TwoResourcePool>,
+        /// Represents a pool that primarily holds quote tokens plus potentially some base tokens held in their place.  
+        quote_pool: Global<TwoResourcePool>,
+        /// Maps pools to a Vault that holds a tiny amount of tokens to workaround native LP restrictions.
         min_liquidity: HashMap<                          
-            ComponentAddress,                       // For both pools counter token:
-            Vault                                   //  hold a tiny amount to temp add when empty
+            ComponentAddress,
+            Vault
         >,
     }
 
     impl PlazaPair {
+        /// Instantiates a new PlazaPair.
+        /// 
+        /// The function sets the state of the newly created PlazaPair and creates two `TwoResourcePool`s (base and 
+        /// quote). It asserts a series of conditions relating to the input parameters to ensure they are within
+        /// acceptable ranges. It also creates two Vaults for the minimal liquidity. This is used in `add_liquidity`
+        /// operations if the pool is empty. The pair will be initialised without liquidity, so liquidity needs
+        /// to be added before any trades can take place.
+        ///
+        /// # Arguments
+        ///
+        /// * `owner_role` - the owner of PlazaPair.
+        /// * `base_bucket` - The bucket for the base token.
+        /// * `quote_bucket` - The bucket for the quote token.
+        /// * `config` - A `PairConfig` instance containing the configuration for the PlazaPair.
+        /// * `initial_price` - The initial price of the currency pair.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if constraints on the parameters are not met (such as invalid base amount,
+        /// quote amount, dissolve delay, fee level or decay factor).
+        ///
+        /// # Returns
+        ///
+        /// * A `Global<PlazaPair>` instance.
         pub fn instantiate_pair(
             owner_role: OwnerRole,
             base_bucket: Bucket,

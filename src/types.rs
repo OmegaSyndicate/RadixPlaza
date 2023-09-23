@@ -1,37 +1,102 @@
 use scrypto::prelude::*;
 
+/// `Shortage` is an enum representing which resource is lacking in a PlazaPair.
+///
+/// This type is used to signal the state of balance for the resources in the pair.
+///
+/// # Variants
+///
+/// * `BaseShortage`: This signals that the base currency in the liquidity pair is less than what it should be.
+/// * `Equilibrium`: This signals that the base and quote currencies are in equilibrium and no shortage exists.
+/// * `QuoteShortage`: This signals that the quote currency in the liquidity pair is less than what it should be.
 #[derive(ScryptoSbor, Copy, Clone, PartialEq)]
 pub enum Shortage {
+    /// Signals that the base currency in the liquidity pair is less than what it should be.
     BaseShortage,
+    /// Signals that the base and quote currencies are in equilibrium. No shortage exists.
     Equilibrium,
+    /// Signals that the quote currency in the liquidity pair is less than what it should be.
     QuoteShortage,
 }
 
+/// `PairState` is a struct representing the current state of a PlazaPair, including
+/// various parameters such as equilibrium price and which side of the pair is in shortage.
+/// These values may change over time and are tracked in this struct.
+///
+/// # Fields
+///
+/// * `p0`: This represents the equilibrium price of the liquidity pair which is the desired price at which the 
+/// base and quote tokens are balanced.
+/// * `shortage`: This represents the shortage state of the pair, indicating whether there is a deficit of the base token, 
+/// quote token or if they're balanced.
+/// * `target_ratio`: This is the ratio between the target and actual number of tokens.
+/// * `last_outgoing`: This is the timestamp of the last outgoing trade which assists in managing the trades.
+/// * `last_out_spot`: This is the spot price of the last outgoing trade which assists in managing the trades.
 #[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairState {
-    pub p0: Decimal,                    // Equilibrium price
-    pub shortage: Shortage,             // Current state of the pair
-    pub target_ratio: Decimal,          // Ratio between target and actual
-    pub last_outgoing: i64,             // Timestamp of last outgoing trade
-    pub last_out_spot: Decimal,         // Last outgoing spot price
+    /// Represents the price at which the liquidity pair reaches equilibrium (no impermanent loss). Reference price is always B[Q].
+    pub p0: Decimal,
+    /// Represents the current shortage state of the pair, ie which side (if any) is in shortage.
+    pub shortage: Shortage,
+    /// Describes the ratio between the target and actual number of tokens for the token currently in shortage.
+    pub target_ratio: Decimal,
+    /// Represents the Unix timestamp of the last trade away from equilibrium.
+    pub last_outgoing: i64,
+    /// Represents the spot price after the last outgoing trade. Spot price is always B[Q].
+    pub last_out_spot: Decimal,
 }
 
+/// `PairConfig` is a struct capturing various configuration parameters that define the behaviour of a PlazaPair.
+/// These settings are fixed at instantiation of each pair. They determine the degree of liquidity concentration,
+/// the level of the trading fee and the decay factor of the filter with which the bid-ask spread is closed.
+///
+/// # Fields
+///
+/// * `k_in`: This represents the degree of concentration for trades towards equilibrium. Values should be between
+/// zero and one. Smaller values represent higher concentration, with 1 being constant product and 0 constant sum.
+/// * `k_out`: This represents the degree of concentration for trades away from equilibrium. Values should be larger
+/// than the value for k_in, and smaller than 0.999 or equal to one. Smaller values represent higher concentration.
+/// * `fee`: This is the fraction of trading fee charged on each trade, distributed to the liquidity providers.
+/// * `decay_factor`: This controls how quickly the price reverts towards the steady state price after an outgoing
+/// trade gives rise to an increased bid-ask spread.
 #[derive(ScryptoSbor, Copy, Clone, PartialEq)]
 pub struct PairConfig {
-    pub k_in: Decimal,                  // Ingress price curve exponent
-    pub k_out: Decimal,                 // Egress price curve exponent
-    pub fee: Decimal,                   // Trading fee fraction
-    pub decay_factor: Decimal,          // Price filter decay factor per minute
+    /// Represents the ingress price curve exponent.
+    pub k_in: Decimal,
+    /// Represents the egress price curve exponent​.
+    pub k_out: Decimal,
+    /// Represents the trading fee fraction.
+    pub fee: Decimal,
+    /// Represents the price filter decay factor per minute.
+    pub decay_factor: Decimal,
 }
 
+/// `TradeAllocation` is a struct representing the amount of change in tokens 
+/// from the base and quote pools during a trade.
+///
+/// The struct provides details on what quantity of each specific token from both pools is involved in any given
+/// transaction. It is generated by the `Quote` function (which is read-only) and used by the `Swap` function that
+/// actually transfers the tokens.
+///
+/// # Fields
+///
+/// * `base_base`: This represents the change in base tokens from the base pool for a given trade.
+/// * `base_quote`: This represents the change in quote tokens from the base pool for a given trade.
+/// * `quote_base`: This represents the change in base tokens from the quote pool for a given trade.
+/// * `quote_quote`: This represents the change in quote tokens from the quote pool for a given trade.
 #[derive(ScryptoSbor, Copy, Clone)]
 pub struct TradeAllocation {
-    pub base_base: Decimal,             // Change in base tokens from base pool
-    pub base_quote: Decimal,            // Change in quote tokens from base pool
-    pub quote_base: Decimal,            // Change in base tokens from quote pool
-    pub quote_quote: Decimal,           // Change in quote tokens from quote pool
+    /// Represents the change in base tokens from the base pool for a given trade.
+    pub base_base: Decimal,             
+    /// Represents the change in quote tokens from the base pool for a given trade.
+    pub base_quote: Decimal,            
+    /// Represents the change in base tokens from the quote pool for a given trade.
+    pub quote_base: Decimal,            
+    /// Represents the change in quote tokens from the quote pool for a given trade.
+    pub quote_quote: Decimal,           
 }
 
+/// So we may format the type of shortage for events or debugging messages
 impl fmt::Display for Shortage {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self {
