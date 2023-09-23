@@ -243,14 +243,45 @@ mod plazadex {
             }
         }
 
-        // Read only method returning the LP tokens associated with the pair for a given base token.
+        /// The `get_lp_tokens` function is a read-only method designed to retrieve the Liquidity Pool (LP) tokens 
+        /// associated with a token pair for a provided base token. It fetches the token pair for the provided base
+        /// token, and then returns the corresponding LP tokens.
+        ///
+        /// # Arguments
+        ///
+        /// * `base_token`: A `ResourceAddress` that represents the base token of the pair.
+        ///
+        /// # Returns
+        ///
+        /// * Returns a tuple `(ResourceAddress, ResourceAddress)`, signifying the LP tokens associated with the
+        ///   token pair.
+        ///
+        /// # Panics
+        ///
+        /// * The function will panic if the provided base token is not listed, or if the associated token pair
+        ///   is not found in the lp token key-value store.
         pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
             let pair = self.address_to_pair.get(&base_token).expect("Token not listed");
             *self.pair_to_lps.get(&pair.address()).expect("Pair not found")
         }
 
-        // Removes a currently listed token pair. This prevents it from being routed to by the DEX
-        // but it remains available on the ledger for direct operation.
+        /// The `delist` function removes a listed token pair from the database, thereby preventing the DEX from
+        /// routing through it. Despite this, the token remains available on the ledger for conducting direct
+        /// transactions. This function first retrieves the token pair and its associated liquidity pool (LP)
+        /// tokens using the provided base token. Then, it removes the pair and LP tokens from the internal
+        /// address-to-pair mapping.
+        ///
+        /// # Arguments
+        ///
+        /// * `base_token`: The `ResourceAddress` representing the base token of the pair to be delisted.
+        ///
+        /// # Panics
+        ///
+        /// * The function will panic if the provided base token is not found in the list of token pairs.
+        ///
+        /// # Events
+        ///
+        /// * The function emits a `TokenDeListed` event after successfully delisting the token pair.
         pub fn delist(&mut self, base_token: ResourceAddress) {
             let pair = self.address_to_pair.get(&base_token).expect("Token not listed");
             let (base_lp, dfp2_lp) = self.get_lp_tokens(base_token);
@@ -264,8 +295,21 @@ mod plazadex {
             Runtime::emit_event(TokenDeListed{base_token, component: *pair});
         }
 
-        // Blacklists a token so it can't be added to the DEX again. Delists the token should it
-        // currently be listed.
+        /// The `blacklist` function is intended to add a token to the blacklist, preventing it to be added to the
+        /// DEX in the future. The function starts by checking that the token is not already present in the blacklist,
+        /// then proceeds to add it. If the token is currently listed, it will be delisted.
+        ///
+        /// # Arguments
+        ///
+        /// * `token`: The `ResourceAddress` representing the token to be blacklisted.
+        ///
+        /// # Panics
+        ///
+        /// * The function will panic if the token is already found in the blacklist.
+        ///
+        /// # Events
+        ///
+        /// * Emits a `TokenBlacklisted` event after successfully blacklisting the token.
         pub fn blacklist(&mut self, token: ResourceAddress) {
             assert!(!self.blacklist.contains(&token), "Token already blacklisted");
             self.blacklist.insert(token);
@@ -279,7 +323,21 @@ mod plazadex {
             Runtime::emit_event(TokenBlacklisted{token});
         }
 
-        // Removes a token from the blacklist so it can once again be added to the exchange
+        /// The `deblacklist` function is responsible for removing a specific token from the blacklist, allowing
+        /// it to be potentially added back to the exchange. The function first checks and asserts that the token
+        /// is indeed present in the blacklist before removing it.
+        ///
+        /// # Parameters
+        ///
+        /// * `token`: A `ResourceAddress` signifying the target token to be removed from the blacklist.
+        ///
+        /// # Panics
+        ///
+        /// * The function will panic if the token is not initially found in the blacklist.
+        ///
+        /// # Emits
+        ///
+        /// * Emits a `TokenDeBlacklisted` event upon successful removal of the token from the blacklist.
         pub fn deblacklist(&mut self, token: ResourceAddress) {
             assert!(self.blacklist.contains(&token), "Token not blacklisted");
             self.blacklist.remove(&token);
@@ -288,20 +346,51 @@ mod plazadex {
             Runtime::emit_event(TokenDeBlacklisted{token});
         }
 
-        // Allows updating the LP token metadata by DEX owner
+        /// This function allows the DEX owner to update the Liquidity Pool (LP) token metadata.
+        /// The `update_lp_metadata` function accesses the LP tokens corresponding to the provided PlazaPair at hand
+        /// using its address. It then involves updating the associated metadata of the tokens with the provided
+        /// key-value pair.
+        ///
+        /// # Arguments
+        ///
+        /// * `pair`: Specifies the targeted PlazaPair to be updated, defined as `Global<PlazaPair>`.
+        /// * `key`: The key part of the metadata key-value pair that's to be updated, of type `String`
+        /// * `value`: The new value that the updated metadata key should hold, represented as a `String`.
+        ///
+        /// # Panics
+        ///
+        /// This function will panic if the address of the provided PlazaPair does not exist within the stored pool
+        /// of LP tokens.
         pub fn update_lp_metadata(&mut self, pair: Global<PlazaPair>, key: String, value: String) {
             let lp_tokens = self.pair_to_lps.get(&pair.address()).expect("Unknown pair");
             ResourceManager::from(lp_tokens.0).set_metadata(&key, value.to_owned());
             ResourceManager::from(lp_tokens.1).set_metadata(&key, value);
         }
 
-        // To allow the team to withdraw DEX owned reserves in case of pool migration
+        /// In case of a pool migration or delisting, the `withdraw_owned_liquidity` function provides an efficient
+        /// mechanism for the withdrawal of DEX owned reserves from a specified pair. This function locates the
+        /// pair's vaults in the `dex_reserves` hash map using the pair's address. It then proceeds to withdraw all
+        /// the reserves from both vaults, returning them as a tuple of `Bucket` instances.
+        ///
+        /// # Arguments
+        ///
+        /// * `pair: Global<PlazaPair>` - The pair of reserves marked for withdrawal.
+        ///
+        /// # Returns
+        ///
+        /// * A tuple, `(Bucket, Bucket)`, containing the DEX-held LP tokens for the pair.
+        ///
+        /// # Panics
+        ///
+        /// The function will panic if it cannot locate the given pair's address inside the `dex_reserves` hash map.
         pub fn withdraw_owned_liquidity(&mut self, pair: Global<PlazaPair>) -> (Bucket, Bucket) {
             let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("Unknown pair");
             (vaults.0.take_all(), vaults.1.take_all())
         }
 
-        // Update the minimum DFP2 amount required to create a pair
+        /// Set Minimum DFP2: This method is used to update the minimum DFP2 amount needed to initiate a liquidity
+        /// pair. The input argument 'min_dfp2' represents the updated minimum DFP2 value. Update the minimum DFP2
+        /// amount required to create a pair
         pub fn set_min_dfp2(&mut self, min_dfp2: Decimal) {
             self.min_dfp2_liquidity = min_dfp2;
         }

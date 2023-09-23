@@ -1,5 +1,6 @@
 use scrypto::prelude::*;
 use crate::constants::*;
+use crate::curves::*;
 use crate::events::*;
 use crate::helpers::*;
 use crate::types::*;
@@ -142,7 +143,31 @@ mod plazapair {
             .globalize()
         }
 
-        // Add liquidity to the pool in return for LP tokens
+        /// Adds liquidity to the appropriate pool in return for LP tokens.
+        ///
+        /// This function takes an `input_bucket` representing the amount of liquidity to be added to the pool. 
+        /// The `is_quote` boolean determines whether the liquidity is added to the quote pool (true) or the 
+        /// base pool (false). Depending on the state of the selected pool and if it's in shortage, the function
+        /// performs various calculations to ensure the correct amount of LP tokens are minted and returned.
+        ///
+        /// # Arguments
+        ///
+        /// * `input_bucket`: A `Bucket` object representing the amount of liquidity being added to the pool.
+        /// * `is_quote`: A flag indicating if the tokens should be added to the quote pool (true) or the base
+        ///    pool (false).
+        ///
+        /// # Returns
+        ///
+        /// * A `Bucket` object representing the amount of LP tokens received in exchange for the added liquidity.
+        ///
+        /// # Panics
+        ///
+        /// * This function may panic if it cannot find the remainder bucket from the pool's `contribute`
+        ///   call when the pool is not in shortage.
+        ///
+        /// # Events
+        ///
+        /// * An `AddLiquidityEvent` is emitted after the liquidity has been successfully added to the pool.
         pub fn add_liquidity(
             &mut self,
             input_bucket: Bucket,
@@ -281,7 +306,23 @@ mod plazapair {
             lp_bucket
         }
 
-        // Exchange LP tokens for the underlying liquidity held in the pair
+        /// The function `remove_liquidity` is designed to process the withdrawal of liquidity from a specified
+        /// pool component. It takes in a Bucket called `lp_bucket` which contains the liquidity pair to be redeemed
+        /// and a boolean `is_quote` to flag whether the LP tokens represent the base or quote pool within the pair.
+        ///
+        /// # Arguments
+        ///
+        /// * `lp_bucket` - A Bucket instance that holds the liquidity pair to be removed from the pool.
+        /// * `is_quote` - A boolean flag indicating the pool type. If true, refers to the quote_pool. If false, refers to the base_pool.
+        ///
+        /// This function retrieves and redeems the liquidity from the relevant pool which results in two buckets 
+        /// (main and other bucket), representing the rest of the liquidity after the redemption. It also emits a 
+        /// RemoveLiquidityEvent with the necessary details.
+        ///
+        /// # Returns
+        ///
+        /// * `(Bucket, Bucket)` - A tuple containing two Buckets which represent the remaining main_bucket and other_bucket 
+        ///   after the liquidity redemption process.
         pub fn remove_liquidity(&mut self, lp_bucket: Bucket, is_quote: bool) -> (Bucket, Bucket) {
             // Get corresponding pool component
             let pool = match is_quote {
@@ -300,7 +341,26 @@ mod plazapair {
             (main_bucket, other_bucket)
         }
 
-        /// Swap a bucket of tokens along the AMM curve.
+        /// Executes a token swap operation using the 'input_bucket', adjusting the state of the liquidity pair and 
+        /// managing the liquidity pools accordingly. It calculates the tokens received from the swap operation, 
+        /// emits a 'SwapEvent' for logging, and processes any fee applied. In the absence of sufficient liquidity 
+        /// in the pool or if the 'input_bucket' is not fully spent, it returns the remaining unspent tokens as 
+        ///  'remainder'.
+        ///
+        /// # Arguments
+        /// * `input_bucket: Bucket` - The mutable bucket carrying the tokens set for the swap. A precondition 
+        /// for the operation is that the 'input_bucket' should not be empty, as it will cause the function to panic.
+        ///
+        /// # Returns
+        /// The function returns a tuple:
+        /// * `output_bucket: Bucket` - The bucket representing the tokens gained from the swap.
+        /// * `remainder: Option<Bucket>` - Contains the unspent tokens after the swap operation. In case there is 
+        ///   nothing left unspent, None is returned.
+        ///
+        /// # Panics
+        /// The function will raise a panic if:
+        ///  * The 'input_bucket' is found empty.
+        ///  * The calculated output token amount is not equal to the actual token amount in the 'output_bucket'.
         pub fn swap(&mut self, mut input_bucket: Bucket) -> (Bucket, Option<Bucket>) {
             // Ensure the input bucket isn't empty
             assert!(input_bucket.amount() > ZERO, "Empty input bucket");
@@ -359,7 +419,19 @@ mod plazapair {
             (output_bucket, remainder)
         }
 
-        // To donate some liquidity to the pair
+        /// Processes a token donation and deposits it into the appropriate liquidity pool. The function handles 
+        /// both types of tokens, Quote and Base, with the help of a boolean flag. If the donated token is of the
+        /// type that is currently in shortage, it recalculates the target ratio for the corresponding pool. 
+        /// The token type of the `donation_bucket` must match that of the pool it's being donated to.
+        ///
+        /// # Arguments
+        /// * `donation_bucket: Bucket` - The bucket containing the donated tokens.
+        /// * `donation_is_quote: bool` - Specifies whether the tokens in the donation_bucket are of Quote type. 
+        ///   If it's 'false', the tokens are considered of Base type.
+        ///
+        /// # Panics
+        /// This function will panic if the token type in the `donation_bucket` does not match the token type to 
+        /// which it's intended to be donated (Quote/Base as signaled by the `donation_is_quote` flag).
         fn donate_to_pool(
             &mut self,
             donation_bucket: Bucket,
@@ -391,7 +463,28 @@ mod plazapair {
             };
         }
 
-        // Get a quote from the AMM for trading tokens on the pair
+        /// Generates a quotation from the AMM for a token swap operation considering the amount of the input tokens 
+        /// and whether the type of those tokens is Quote or Base. Calculates and returns the possible outcome 
+        /// amount after trade, any remaining amount from the input tokens after the trade, the transaction fee 
+        /// applied, allocated changes to liquidity pools, and the updated state of the pair. The function ensures
+        /// that the input amount is greater than zero and that the traded amount doesn't exceed the input amount.
+        ///
+        /// # Arguments
+        /// * `input_amount: Decimal` - Denotes the volume of tokens to be traded.
+        /// * `input_is_quote: bool` - Indicates if the input token type is quote, 'false' for base tokens.
+        ///
+        /// # Returns
+        /// Returns a tuple comprising:
+        /// * `output_amount: Decimal` - The resultant amount of tokens possible to gain from the trade.
+        /// * `remainder: Decimal` - Any unspent portion of the input after the trade.
+        /// * `fee: Decimal` - The fee incurred from the trade.
+        /// * `allocation: TradeAllocation` - Denotes the adjustments in the liquidity pools following the trade.
+        /// * `new_state: PairState` - The updated state of the trading pair after the trade.
+        ///
+        /// # Panics
+        /// The function will panic if:
+        /// * The `input_amount` is zero or less.
+        /// * If the traded volume exceeds the `input_amount`.
         pub fn quote(
             &self,
             input_amount: Decimal,
@@ -558,7 +651,19 @@ mod plazapair {
             (output_amount - fee, remainder, fee, allocation, new_state)
         }
 
-        // Select which of the liquidity pools and corresponding target ratio we're working with
+        /// Determines the liquidity pool to be used and its affiliated target ratio based on the current pair state 
+        /// and whether the input token type is Quote or Base. Additionally, it identifies if there is a need to 
+        /// invert the operational mode of the pool based on the token type and its corresponding shortage.
+        ///
+        /// # Arguments
+        /// * `state: &PairState` - Reference to the current Pair State.
+        /// * `input_is_quote: bool` - Flag indicating if the input token type is quote ('false' for base tokens).
+        ///
+        /// # Returns
+        /// A tuple consisting of:
+        /// * `&Global<TwoResourcePool>` - The chosen liquidity pool reference.
+        /// * `Decimal` - The target ratio associated with the selected pool.
+        /// * `bool` - A boolean value indicating whether the resource pool's inputs require inversion.
         fn select_pool(&self, state: &PairState, input_is_quote: bool) -> (&Global<TwoResourcePool>, Decimal, bool) {
             let p_ref = state.p0;
             let p_ref_inv = ONE / p_ref;
@@ -572,6 +677,19 @@ mod plazapair {
             }
         }
 
+        /// Performs an evaluation of a provided liquidity pool, extracting crucial numerical information relevant 
+        /// for trading calculations. Specifically, it derives 'actual', 'surplus', and 'shortfall' amounts from
+        /// the pool utilising the 'target_ratio' for shortfall computation.
+        ///
+        /// # Arguments
+        /// * `pool: &Global<TwoResourcePool>` - A reference to the pool which is to be assessed.
+        /// * `target_ratio: Decimal` - The specific ratio that is used in computing the shortfall.
+        ///
+        /// # Return
+        /// Returns a tuple of Decimals containing:
+        /// * `actual: Decimal` - Represents the current amount of desired primary tokens in the liquidity pool.
+        /// * `surplus: Decimal` - Represents the current amount of less desired secondary tokens within the pool.
+        /// * `shortfall: Decimal` - Represents the shortage of primary tokens in the pool.
         fn  assess_pool(&self, pool: &Global<TwoResourcePool>, target_ratio: Decimal) -> (Decimal, Decimal, Decimal) {
             let reserves = pool.get_vault_amounts();
             let actual = *reserves.get_index(0).map(|(_addr, amount)| amount).unwrap();

@@ -34,7 +34,7 @@ pub enum Shortage {
 /// * `last_out_spot`: This is the spot price of the last outgoing trade which assists in managing the trades.
 #[derive(ScryptoSbor, Copy, Clone)]
 pub struct PairState {
-    /// Represents the price at which the liquidity pair reaches equilibrium (no impermanent loss). Reference price is always B[Q].
+    /// Represents the price at which the liquidity pair reaches equilibrium (no impermanent loss). Reference price is always B\[Q\].
     pub p0: Decimal,
     /// Represents the current shortage state of the pair, ie which side (if any) is in shortage.
     pub shortage: Shortage,
@@ -42,7 +42,7 @@ pub struct PairState {
     pub target_ratio: Decimal,
     /// Represents the Unix timestamp of the last trade away from equilibrium.
     pub last_outgoing: i64,
-    /// Represents the spot price after the last outgoing trade. Spot price is always B[Q].
+    /// Represents the spot price after the last outgoing trade. Spot price is always B\[Q\].
     pub last_out_spot: Decimal,
 }
 
