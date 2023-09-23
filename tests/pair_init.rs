@@ -1,8 +1,14 @@
 use defiplaza::pair::test_bindings::*;
-use defiplaza::types::PairConfig;
+use defiplaza::types::*;
 use scrypto::*;
 use scrypto_test::prelude::*;
 
+const REF_CONFIG: PairConfig = PairConfig {
+    k_in: Decimal(I192::from_digits([400000000000000022, 0, 0])),
+    k_out: Decimal(I192::from_digits([1000000000000000000, 0, 0])),
+    fee: Decimal(I192::from_digits([3000000000000000, 0, 0])),
+    decay_factor: Decimal(I192::from_digits([951200000000000045, 0, 0])),
+};
 
 // Generic setup
 pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
@@ -19,28 +25,21 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
         .divisibility(18)
         .mint_initial_supply(20000, &mut env)?;
 
-    let config = PairConfig {
-        k_in: dec!("0.4"),
-        k_out: dec!("1"),
-        fee: dec!("0.003"),
-        decay_factor: dec!("0.9512"),
-    };
-
-    Ok(func(env, package, base_bucket, quote_bucket, config)?)
+    Ok(func(env, package, base_bucket, quote_bucket, REF_CONFIG)?)
 }
 
 
 // Individual tests
 #[test]
 fn deploys_healthy() -> Result<(), RuntimeError> {
-    let _ = publish_and_setup(|
+    publish_and_setup(|
         mut env, 
         package: PackageAddress,
         base_bucket: Bucket,
         quote_bucket: Bucket,
         config: PairConfig
-    | {
-        let _pair = PlazaPair::instantiate_pair(
+    | -> Result<(), RuntimeError> {
+        let pair = PlazaPair::instantiate_pair(
             OwnerRole::None,
             base_bucket.take(dec!("0.000001"), &mut env)?,
             quote_bucket.take(dec!("0.000001"), &mut env)?,
@@ -49,9 +48,28 @@ fn deploys_healthy() -> Result<(), RuntimeError> {
             package,
             &mut env,
         )?;
+
+        let (config, state, base_address, quote_address, _base_pool, _quote_pool, _min_liq) = 
+            env.read_component_state::<(
+                PairConfig,
+                PairState,
+                ResourceAddress,
+                ResourceAddress,
+                ComponentAddress,
+                ComponentAddress,
+                HashMap<ComponentAddress, Vault>
+            ), _>(pair).expect("Error reading state");
+
+        assert!(config == REF_CONFIG, "Config error");
+        assert!(state.p0 == dec!(1), "Price error");
+        assert!(state.shortage == Shortage::Equilibrium, "Shortage error");
+        assert!(state.target_ratio == dec!(1), "Target ratio error");
+        assert!(state.last_out_spot == dec!(1), "Last spot price error");        
+        assert!(base_address == base_bucket.resource_address(&mut env)?, "base address error");
+        assert!(quote_address == quote_bucket.resource_address(&mut env)?, "quote address error");
+
         Ok(())
-    })?;
-    Ok(())
+    })
 }
 
 #[test]

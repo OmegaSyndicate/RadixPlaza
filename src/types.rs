@@ -16,7 +16,7 @@ pub struct PairState {
     pub last_out_spot: Decimal,         // Last outgoing spot price
 }
 
-#[derive(ScryptoSbor, Copy, Clone)]
+#[derive(ScryptoSbor, Copy, Clone, PartialEq)]
 pub struct PairConfig {
     pub k_in: Decimal,                  // Ingress price curve exponent
     pub k_out: Decimal,                 // Egress price curve exponent
