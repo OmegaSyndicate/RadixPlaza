@@ -224,17 +224,16 @@ dependencies = [
 
 [[package]]
 name = "defiplaza"
-version = "0.1.0"
+version = "0.5.0"
 dependencies = [
  "defiplaza",
- "radix-engine 0.12.1",
- "radix-engine-interface 0.12.1",
- "sbor 0.12.1",
- "scrypto 0.12.1",
+ "radix-engine",
+ "radix-engine-interface",
+ "sbor",
+ "scrypto",
  "scrypto-test",
- "scrypto-unit 0.12.1",
- "test-engine",
- "transaction 0.12.1",
+ "scrypto-unit",
+ "transaction",
 ]
 
 [[package]]
@@ -410,9 +409,9 @@ checksum = "95505c38b4572b2d910cecb0281560f54b440a19336cbbcb27bf6ce6adc6f5a8"
 
 [[package]]
 name = "hermit-abi"
-version = "0.3.2"
+version = "0.3.3"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "443144c8cdadd93ebf52ddb4056d257f5b52c04d3c804e657d19eb73fc33668b"
+checksum = "d77f7ec81a6d05a3abb01ab6eb7590f6083d08449fe5a1c8b1e620283546ccb7"
 
 [[package]]
 name = "hex"
@@ -498,9 +497,9 @@ checksum = "884e2677b40cc8c339eaefcb701c32ef1fd2493d71118dc0ca4b6a736c93bd67"
 
 [[package]]
 name = "libc"
-version = "0.2.147"
+version = "0.2.148"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b4668fb0ea861c1df094127ac5f1da3409a82116a4ba74fca2e58ef927159bb3"
+checksum = "9cdc71e17332e86d2e1d38c1f99edcb6288ee11b815fb1a4b049eaa2114d369b"
 
 [[package]]
 name = "libm"
@@ -510,9 +509,9 @@ checksum = "f7012b1bbb0719e1097c47611d3898568c546d597c2e74d66f6087edd5233ff4"
 
 [[package]]
 name = "linux-raw-sys"
-version = "0.4.5"
+version = "0.4.7"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "57bcfdad1b858c2db7c38303a6d2ad4dfaf5eb53dfeb0910128b2c26d6158503"
+checksum = "1a9bad9f94746442c783ca431b22403b519cd7fbeed0533fdd6328b2f2212128"
 
 [[package]]
 name = "lock_api"
@@ -563,26 +562,14 @@ dependencies = [
 
 [[package]]
 name = "native-sdk"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
- "radix-engine-common 0.11.0",
- "radix-engine-derive 0.11.0",
- "radix-engine-interface 0.11.0",
- "sbor 0.11.0",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "native-sdk"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "radix-engine-common 0.12.1",
- "radix-engine-derive 0.12.1",
- "radix-engine-interface 0.12.1",
- "sbor 0.12.1",
- "utils 0.12.1",
+ "radix-engine-common",
+ "radix-engine-derive",
+ "radix-engine-interface",
+ "sbor",
+ "utils",
 ]
 
 [[package]]
@@ -658,14 +645,8 @@ dependencies = [
  "proc-macro-error",
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.37",
 ]
-
-[[package]]
-name = "parity-wasm"
-version = "0.42.2"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "be5e13c266502aadf83426d87d81a0f5d1ef45b8027f5a471c360abfe4bfae92"
 
 [[package]]
 name = "parking_lot"
@@ -728,9 +709,9 @@ dependencies = [
 
 [[package]]
 name = "proc-macro2"
-version = "1.0.66"
+version = "1.0.67"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "18fb31db3f9bddb2ea821cde30a9f70117e3f119938b5ee630b7403aa6e2ead9"
+checksum = "3d433d9f1a3e8c1263d9456598b16fec66f4acc9a74dacffd35c7bb09b3a1328"
 dependencies = [
  "unicode-ident",
 ]
@@ -757,37 +738,8 @@ dependencies = [
 
 [[package]]
 name = "radix-engine"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-dependencies = [
- "bitflags 1.3.2",
- "colored",
- "hex",
- "lazy_static",
- "moka",
- "native-sdk 0.11.0",
- "num-traits",
- "parity-wasm",
- "paste",
- "radix-engine-common 0.11.0",
- "radix-engine-constants",
- "radix-engine-interface 0.11.0",
- "radix-engine-store-interface 0.11.0",
- "resources-tracker-macro 0.1.0 (git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0)",
- "sbor 0.11.0",
- "serde_json",
- "strum",
- "transaction 0.11.0",
- "utils 0.11.0",
- "wasm-instrument 0.1.1",
- "wasmi",
- "wasmparser-nostd 0.100.1",
-]
-
-[[package]]
-name = "radix-engine"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bitflags 1.3.2",
  "colored",
@@ -795,29 +747,29 @@ dependencies = [
  "hex",
  "lazy_static",
  "moka",
- "native-sdk 0.12.1",
+ "native-sdk",
  "num-traits",
  "paste",
- "radix-engine-common 0.12.1",
- "radix-engine-interface 0.12.1",
+ "radix-engine-common",
+ "radix-engine-interface",
  "radix-engine-macros",
- "radix-engine-store-interface 0.12.1",
- "resources-tracker-macro 0.1.0 (git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1)",
- "sbor 0.12.1",
+ "radix-engine-store-interface",
+ "resources-tracker-macro",
+ "sbor",
  "serde_json",
  "strum",
  "syn 1.0.93",
- "transaction 0.12.1",
- "utils 0.12.1",
- "wasm-instrument 0.4.0",
+ "transaction",
+ "utils",
+ "wasm-instrument",
  "wasmi",
  "wasmparser 0.107.0",
 ]
 
 [[package]]
 name = "radix-engine-common"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bech32",
  "blake2",
@@ -828,214 +780,107 @@ dependencies = [
  "num-integer",
  "num-traits",
  "paste",
- "radix-engine-constants",
- "radix-engine-derive 0.11.0",
- "sbor 0.11.0",
+ "radix-engine-derive",
+ "sbor",
  "serde",
  "strum",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "radix-engine-common"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "bech32",
- "blake2",
- "bnum",
- "hex",
- "lazy_static",
- "num-bigint",
- "num-integer",
- "num-traits",
- "paste",
- "radix-engine-derive 0.12.1",
- "sbor 0.12.1",
- "serde",
- "strum",
- "utils 0.12.1",
-]
-
-[[package]]
-name = "radix-engine-constants"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-
-[[package]]
-name = "radix-engine-derive"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-dependencies = [
- "proc-macro2",
- "quote",
- "sbor-derive-common 0.11.0",
- "syn 1.0.109",
+ "utils",
 ]
 
 [[package]]
 name = "radix-engine-derive"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "proc-macro2",
  "quote",
- "sbor-derive-common 0.12.1",
+ "sbor-derive-common",
  "syn 1.0.93",
 ]
 
 [[package]]
 name = "radix-engine-interface"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bitflags 1.3.2",
  "const-sha1",
  "hex",
  "lazy_static",
  "paste",
- "radix-engine-common 0.11.0",
- "radix-engine-derive 0.11.0",
- "sbor 0.11.0",
- "scrypto-schema 0.11.0",
- "serde_json",
- "strum",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "radix-engine-interface"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "bitflags 1.3.2",
- "const-sha1",
- "hex",
- "lazy_static",
- "paste",
- "radix-engine-common 0.12.1",
- "radix-engine-derive 0.12.1",
+ "radix-engine-common",
+ "radix-engine-derive",
+ "radix-engine-macros",
  "regex",
- "sbor 0.12.1",
- "scrypto-schema 0.12.1",
+ "sbor",
+ "scrypto-schema",
  "serde_json",
  "strum",
- "utils 0.12.1",
+ "utils",
 ]
 
 [[package]]
 name = "radix-engine-macros"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
+ "paste",
  "proc-macro2",
  "quote",
+ "radix-engine-common",
  "syn 1.0.93",
 ]
 
 [[package]]
 name = "radix-engine-profiling"
-version = "0.9.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-dependencies = [
- "fixedstr",
-]
-
-[[package]]
-name = "radix-engine-profiling"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "fixedstr",
 ]
 
 [[package]]
 name = "radix-engine-queries"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "hex",
  "itertools",
  "paste",
- "radix-engine 0.11.0",
- "radix-engine-constants",
- "radix-engine-interface 0.11.0",
- "radix-engine-store-interface 0.11.0",
- "sbor 0.11.0",
- "transaction 0.11.0",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "radix-engine-queries"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "hex",
- "itertools",
- "paste",
- "radix-engine 0.12.1",
- "radix-engine-interface 0.12.1",
- "radix-engine-store-interface 0.12.1",
- "sbor 0.12.1",
- "transaction 0.12.1",
- "utils 0.12.1",
+ "radix-engine",
+ "radix-engine-interface",
+ "radix-engine-store-interface",
+ "sbor",
+ "transaction",
+ "utils",
 ]
 
 [[package]]
 name = "radix-engine-store-interface"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "hex",
  "itertools",
- "radix-engine-common 0.11.0",
- "radix-engine-derive 0.11.0",
- "radix-engine-interface 0.11.0",
- "sbor 0.11.0",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "radix-engine-store-interface"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "hex",
- "itertools",
- "radix-engine-common 0.12.1",
- "radix-engine-derive 0.12.1",
- "radix-engine-interface 0.12.1",
- "sbor 0.12.1",
- "utils 0.12.1",
+ "radix-engine-common",
+ "radix-engine-derive",
+ "radix-engine-interface",
+ "sbor",
+ "utils",
 ]
 
 [[package]]
 name = "radix-engine-stores"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "hex",
  "itertools",
- "radix-engine-common 0.11.0",
- "radix-engine-derive 0.11.0",
- "radix-engine-store-interface 0.11.0",
- "sbor 0.11.0",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "radix-engine-stores"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "hex",
- "itertools",
- "radix-engine-common 0.12.1",
- "radix-engine-derive 0.12.1",
- "radix-engine-store-interface 0.12.1",
- "sbor 0.12.1",
- "utils 0.12.1",
+ "radix-engine-common",
+ "radix-engine-derive",
+ "radix-engine-store-interface",
+ "sbor",
+ "utils",
 ]
 
 [[package]]
@@ -1115,23 +960,12 @@ checksum = "dbb5fb1acd8a1a18b3dd5be62d25485eb770e05afb408a9627d14d451bae12da"
 
 [[package]]
 name = "resources-tracker-macro"
-version = "0.1.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "proc-macro2",
  "quote",
- "radix-engine-profiling 0.9.0",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "resources-tracker-macro"
-version = "0.1.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "proc-macro2",
- "quote",
- "radix-engine-profiling 0.12.1",
+ "radix-engine-profiling",
  "syn 1.0.93",
 ]
 
@@ -1146,9 +980,9 @@ dependencies = [
 
 [[package]]
 name = "rustix"
-version = "0.38.11"
+version = "0.38.14"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c0c3dde1fc030af041adc40e79c0e7fbcf431dd24870053d187d7c66e4b87453"
+checksum = "747c788e9ce8e92b12cd485c49ddf90723550b654b32508f979b71a7b1ecda4f"
 dependencies = [
  "bitflags 2.4.0",
  "errno",
@@ -1180,66 +1014,31 @@ dependencies = [
 
 [[package]]
 name = "sbor"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "const-sha1",
  "hex",
  "lazy_static",
  "paste",
- "sbor-derive 0.11.0",
+ "sbor-derive",
  "serde",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "sbor"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "const-sha1",
- "hex",
- "lazy_static",
- "paste",
- "sbor-derive 0.12.1",
- "serde",
- "utils 0.12.1",
+ "utils",
 ]
 
 [[package]]
 name = "sbor-derive"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "proc-macro2",
- "sbor-derive-common 0.11.0",
-]
-
-[[package]]
-name = "sbor-derive"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "proc-macro2",
- "sbor-derive-common 0.12.1",
+ "sbor-derive-common",
 ]
 
 [[package]]
 name = "sbor-derive-common"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-dependencies = [
- "const-sha1",
- "itertools",
- "proc-macro2",
- "quote",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "sbor-derive-common"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "const-sha1",
  "itertools",
@@ -1265,8 +1064,8 @@ checksum = "94143f37725109f92c262ed2cf5e59bce7498c01bcc1502d7b9afe439a4e9f49"
 
 [[package]]
 name = "scrypto"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bech32",
  "const-sha1",
@@ -1274,64 +1073,28 @@ dependencies = [
  "num-bigint",
  "num-traits",
  "paste",
- "radix-engine-common 0.11.0",
- "radix-engine-derive 0.11.0",
- "radix-engine-interface 0.11.0",
- "sbor 0.11.0",
- "scrypto-derive 0.11.0",
- "scrypto-schema 0.11.0",
+ "radix-engine-common",
+ "radix-engine-derive",
+ "radix-engine-interface",
+ "sbor",
+ "scrypto-derive",
+ "scrypto-schema",
  "serde",
  "strum",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "scrypto"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "bech32",
- "const-sha1",
- "hex",
- "num-bigint",
- "num-traits",
- "paste",
- "radix-engine-common 0.12.1",
- "radix-engine-derive 0.12.1",
- "radix-engine-interface 0.12.1",
- "sbor 0.12.1",
- "scrypto-derive 0.12.1",
- "scrypto-schema 0.12.1",
- "serde",
- "strum",
- "utils 0.12.1",
+ "utils",
 ]
 
 [[package]]
 name = "scrypto-derive"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "proc-macro2",
  "quote",
- "radix-engine-common 0.11.0",
- "sbor 0.11.0",
- "scrypto-schema 0.11.0",
- "serde",
- "serde_json",
- "syn 1.0.109",
-]
-
-[[package]]
-name = "scrypto-derive"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "proc-macro2",
- "quote",
- "radix-engine-common 0.12.1",
- "sbor 0.12.1",
- "scrypto-schema 0.12.1",
+ "radix-engine-common",
+ "regex",
+ "sbor",
+ "scrypto-schema",
  "serde",
  "serde_json",
  "syn 1.0.93",
@@ -1339,80 +1102,49 @@ dependencies = [
 
 [[package]]
 name = "scrypto-schema"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bitflags 1.3.2",
- "radix-engine-common 0.11.0",
- "sbor 0.11.0",
- "serde",
-]
-
-[[package]]
-name = "scrypto-schema"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "bitflags 1.3.2",
- "radix-engine-common 0.12.1",
- "sbor 0.12.1",
+ "radix-engine-common",
+ "sbor",
  "serde",
 ]
 
 [[package]]
 name = "scrypto-test"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
- "native-sdk 0.12.1",
+ "native-sdk",
  "ouroboros",
  "paste",
- "radix-engine 0.12.1",
- "radix-engine-common 0.12.1",
- "radix-engine-interface 0.12.1",
- "radix-engine-store-interface 0.12.1",
- "radix-engine-stores 0.12.1",
- "sbor 0.12.1",
+ "radix-engine",
+ "radix-engine-common",
+ "radix-engine-interface",
+ "radix-engine-store-interface",
+ "radix-engine-stores",
+ "sbor",
  "serde_json",
- "transaction 0.12.1",
+ "transaction",
 ]
 
 [[package]]
 name = "scrypto-unit"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
- "radix-engine 0.11.0",
- "radix-engine-constants",
- "radix-engine-interface 0.11.0",
- "radix-engine-queries 0.11.0",
- "radix-engine-store-interface 0.11.0",
- "radix-engine-stores 0.11.0",
- "sbor 0.11.0",
- "scrypto 0.11.0",
+ "radix-engine",
+ "radix-engine-interface",
+ "radix-engine-queries",
+ "radix-engine-store-interface",
+ "radix-engine-stores",
+ "sbor",
+ "scrypto",
  "serde",
  "serde_json",
- "transaction 0.11.0",
- "utils 0.11.0",
- "wabt",
-]
-
-[[package]]
-name = "scrypto-unit"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "radix-engine 0.12.1",
- "radix-engine-interface 0.12.1",
- "radix-engine-queries 0.12.1",
- "radix-engine-store-interface 0.12.1",
- "radix-engine-stores 0.12.1",
- "sbor 0.12.1",
- "scrypto 0.12.1",
- "serde",
- "serde_json",
- "transaction 0.12.1",
- "utils 0.12.1",
+ "transaction",
+ "utils",
  "wabt",
 ]
 
@@ -1436,9 +1168,9 @@ dependencies = [
 
 [[package]]
 name = "semver"
-version = "1.0.18"
+version = "1.0.19"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b0293b4b29daaf487284529cc2f5675b8e57c61f70167ba415a463651fd6a918"
+checksum = "ad977052201c6de01a8ef2aa3378c4bd23217a056337d1d6da40468d267a4fb0"
 dependencies = [
  "serde",
 ]
@@ -1460,14 +1192,14 @@ checksum = "4eca7ac642d82aa35b60049a6eccb4be6be75e599bd2e9adb5f875a737654af2"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.37",
 ]
 
 [[package]]
 name = "serde_json"
-version = "1.0.105"
+version = "1.0.107"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "693151e1ac27563d6dbcec9dee9fbd5da8539b20fa14ad3752b2e6d363ace360"
+checksum = "6b420ce6e3d8bd882e9b243c6eed35dbc9a6110c9769e74b584e0d68d1f20c65"
 dependencies = [
  "itoa",
  "ryu",
@@ -1510,9 +1242,9 @@ dependencies = [
 
 [[package]]
 name = "smallvec"
-version = "1.11.0"
+version = "1.11.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "62bb4feee49fdd9f707ef802e22365a35de4b7b299de4763d44bfea899442ff9"
+checksum = "942b4a808e05215192e39f4ab80813e599068285906cc91aa64f923db842bd5a"
 
 [[package]]
 name = "spin"
@@ -1577,9 +1309,9 @@ dependencies = [
 
 [[package]]
 name = "syn"
-version = "2.0.31"
+version = "2.0.37"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "718fa2415bcb8d8bd775917a1bf12a7931b6dfa890753378538118181e0cb398"
+checksum = "7303ef2c05cd654186cb250d29049a24840ca25d2747c25c0381c8d9e2f582e8"
 dependencies = [
  "proc-macro2",
  "quote",
@@ -1606,18 +1338,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "test-engine"
-version = "0.0.1"
-source = "git+https://github.com/BeakerFi/scrypto-toolkit?branch=main#8b9d280b93c5efe3e2810c1d040d7de3ad5c791c"
-dependencies = [
- "radix-engine 0.11.0",
- "radix-engine-interface 0.11.0",
- "radix-engine-stores 0.11.0",
- "scrypto-unit 0.11.0",
- "transaction 0.11.0",
-]
-
-[[package]]
 name = "thiserror"
 version = "1.0.48"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1634,41 +1354,24 @@ checksum = "49922ecae66cc8a249b77e68d1d0623c1b2c514f0060c27cdc68bd62a1219d35"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.37",
 ]
 
 [[package]]
 name = "transaction"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "bech32",
  "ed25519-dalek",
  "hex",
  "lazy_static",
- "radix-engine-common 0.11.0",
- "radix-engine-constants",
- "radix-engine-interface 0.11.0",
- "sbor 0.11.0",
- "secp256k1",
- "utils 0.11.0",
-]
-
-[[package]]
-name = "transaction"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
-dependencies = [
- "bech32",
- "ed25519-dalek",
- "hex",
- "lazy_static",
- "radix-engine-common 0.12.1",
- "radix-engine-interface 0.12.1",
- "sbor 0.12.1",
+ "radix-engine-common",
+ "radix-engine-interface",
+ "sbor",
  "secp256k1",
  "strum",
- "utils 0.12.1",
+ "utils",
 ]
 
 [[package]]
@@ -1679,9 +1382,9 @@ checksum = "0eee8098afad3fb0c54a9007aab6804558410503ad676d4633f9c2559a00ac0f"
 
 [[package]]
 name = "typenum"
-version = "1.16.0"
+version = "1.17.0"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "497961ef93d974e23eb6f433eb5fe1b7930b659f06d12dec6fc44a8f554c0bba"
+checksum = "42ff0bf0c66b8238c6f3b578df37d0b7848e55df8577b3f74f92a69acceeb825"
 
 [[package]]
 name = "unicase"
@@ -1694,9 +1397,9 @@ dependencies = [
 
 [[package]]
 name = "unicode-ident"
-version = "1.0.11"
+version = "1.0.12"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "301abaae475aa91687eb82514b328ab47a211a533026cb25fc3e519b86adfc3c"
+checksum = "3354b9ac3fae1ff6755cb6db53683adb661634f67557942dea4facebec0fee4b"
 
 [[package]]
 name = "unicode-xid"
@@ -1706,17 +1409,8 @@ checksum = "f962df74c8c05a667b5ee8bcf162993134c104e96440b663c8daa176dc772d8c"
 
 [[package]]
 name = "utils"
-version = "0.11.0"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.11.0#f9a4ef37ff8e90b30a71a244b7f25b810aa22bf1"
-dependencies = [
- "indexmap 2.0.0-pre",
- "serde",
-]
-
-[[package]]
-name = "utils"
-version = "0.12.1"
-source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v0.12.1#302e0401ed0e3bf4a2a6ea0df147ddd7fb57152e"
+version = "1.0.0"
+source = "git+https://github.com/radixdlt/radixdlt-scrypto?tag=v1.0.0#6ab3fab9ca88788a6753649b553ea3b1b3a5e31f"
 dependencies = [
  "indexmap 2.0.0-pre",
  "serde",
@@ -1793,15 +1487,6 @@ dependencies = [
 
 [[package]]
 name = "wasm-instrument"
-version = "0.1.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "962e5b0401bbb6c887f54e69b8c496ea36f704df65db73e81fd5ff8dc3e63a9f"
-dependencies = [
- "parity-wasm",
-]
-
-[[package]]
-name = "wasm-instrument"
 version = "0.4.0"
 source = "git+https://github.com/radixdlt/wasm-instrument?branch=radix-master#9b1177a9f1076892d85a454c999cedc421f5a893"
 dependencies = [
@@ -1820,7 +1505,7 @@ dependencies = [
  "spin",
  "wasmi_arena",
  "wasmi_core",
- "wasmparser-nostd 0.91.0",
+ "wasmparser-nostd",
 ]
 
 [[package]]
@@ -1851,9 +1536,9 @@ dependencies = [
 
 [[package]]
 name = "wasmparser"
-version = "0.112.0"
+version = "0.113.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "e986b010f47fcce49cf8ea5d5f9e5d2737832f12b53ae8ae785bbe895d0877bf"
+checksum = "a128cea7b8516703ab41b10a0b1aa9ba18d0454cd3792341489947ddeee268db"
 dependencies = [
  "indexmap 2.0.0",
  "semver",
@@ -1869,22 +1554,13 @@ dependencies = [
 ]
 
 [[package]]
-name = "wasmparser-nostd"
-version = "0.100.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "9157cab83003221bfd385833ab587a039f5d6fa7304854042ba358a3b09e0724"
-dependencies = [
- "indexmap-nostd",
-]
-
-[[package]]
 name = "wasmprinter"
-version = "0.2.64"
+version = "0.2.66"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "34ddf5892036cd4b780d505eff1194a0cbc10ed896097656fdcea3744b5e7c2f"
+checksum = "ab2e5e818f88cee5311e9a5df15cba0a8f772978baf3109af97004bce6e8e3c6"
 dependencies = [
  "anyhow",
- "wasmparser 0.112.0",
+ "wasmparser 0.113.1",
 ]
 
 [[package]]
@@ -1905,9 +1581,9 @@ checksum = "ac3b87c63620426dd9b991e5ce0329eff545bccbbb34f3be09ff6fb6ab51b7b6"
 
 [[package]]
 name = "winapi-util"
-version = "0.1.5"
+version = "0.1.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "70ec6ce85bb158151cae5e5c87f95a8e97d2c0c4b001223f33a334e3ce5de178"
+checksum = "f29e6f9198ba0d26b4c9f07dbe6f9ed633e1f3d5b8b414090084349e46a52596"
 dependencies = [
  "winapi",
 ]
@@ -2001,5 +1677,5 @@ checksum = "ce36e65b0d2999d2aafac989fb249189a141aee1f53c612c1f37d72631959f69"
 dependencies = [
  "proc-macro2",
  "quote",
- "syn 2.0.31",
+ "syn 2.0.37",
 ]
