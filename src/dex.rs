@@ -24,9 +24,20 @@ mod plazadex {
         }
     }
 
-    // PlazaDex is the DefiPlaza decentralized exchange on Radix
+    /// Data held by the DefiPlaza decentralized exchange.
+    ///
+    /// # Fields 
+    /// * `dfp2: ResourceAddress` - Address of the quote token used in all the pairs.
+    /// * `blacklist: HashSet<ResourceAddress>` - Tracks blacklisted tokens.
+    /// * `address_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>` - Links listed tokens to their
+    ///    corresponding Global<PlazaPair>.
+    /// * `pair_to_lps: KeyValueStore<ComponentAddress, (ResourceAddress, ResourceAddress)>` - Contains the two LP
+    ///    token addresses for any PlazaPair created by the DEX.
+    /// * `dex_reserves: KeyValueStore<ComponentAddress, (Vault, Vault)>` - Contains the DEX-held liquidity for each
+    ///    of the pairs.
+    /// * `min_dfp2_liquidity: Decimal` - Specifies the minimum dfp2 liquidity for new pairs.
+    /// * `pairs_owner: OwnerRole` - Badge of the exchange owner, who can perform admin functions.
     struct PlazaDex {
-        // Pair location for certain token / lp_token
         dfp2: ResourceAddress,
         blacklist: HashSet<ResourceAddress>,
         address_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
@@ -37,7 +48,22 @@ mod plazadex {
     }
 
     impl PlazaDex {
-        // Constructor to instantiate and deploy a new pair
+        /// Constructs a new PlazaDex instance and deploys it to the ledger.
+        ///
+        /// # Arguments
+        ///
+        /// * `dfp2_address: ResourceAddress` - The DFP2 address for initializing PlazaDex.
+        /// * `owner_badge: ResourceAddress` - Badge of the PlazaDex owner.
+        ///
+        /// # Returns
+        ///
+        /// * `Global<PlazaDex>` - A global reference to the initialized and deployed PlazaDex.
+        ///
+        /// # Note
+        ///
+        /// The function reserves an address for the component, initializes PlazaDex with minimal dfp2 
+        /// liquidity, assigned owner, and empty key-value store mappings. Finally, it prepares the PlazaDex 
+        /// for global accessibility and deploys it.
         pub fn instantiate_dex(dfp2_address: ResourceAddress, owner_badge: ResourceAddress) -> Global<PlazaDex> {
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
@@ -65,7 +91,29 @@ mod plazadex {
             .globalize()
         }
 
-        // Create a new liquidity pair on the exchange
+        /// Constructs a `PlazaPair` using the specified `Bucket` instances for the base and `DFP2` tokens.
+        ///
+        /// # Arguments
+        ///
+        /// * `&mut self` - A mutable reference to `self`.
+        /// * `base_bucket` - `Bucket` holding the base token.
+        /// * `dfp2_bucket` - `Bucket` holding the `DFP2` token.
+        /// * `config` - Configuration details for the trading pair.
+        /// * `p0` - The initial price specified for the trading pair.
+        ///
+        /// # Returns
+        ///
+        /// A `Global<PlazaPair>` instance representing the newly formed trading pair is returned on successful 
+        /// execution.
+        ///
+        /// # Panics
+        ///
+        /// Panics in cases related to the base token being in the blacklist, if `DFP2` is added as a base token,
+        /// if there is insufficient liquidity, or if the pair already exists.
+        ///
+        /// # Events
+        ///
+        /// Emits a `PairCreated` event detailing the new pair on its successful formation.
         pub fn create_pair(
             &mut self,
             mut base_bucket: Bucket,
@@ -137,7 +185,21 @@ mod plazadex {
             pair
         }
 
-        // Swap tokens
+        /// Initiates a token swap on the exchange, converting the input tokens into a target output token.
+        ///
+        /// # Args
+        ///
+        /// * `tokens`: Bucket - A bucket containing the tokens intended for exchange.
+        /// * `output_token`: ResourceAddress - The desired output type of token post swap.
+        ///
+        /// # Returns
+        ///
+        /// A tuple containing a `Bucket` representing the exchanged tokens and an Option<Bucket> that will hold
+        /// any remainder due to lack of liquidity in the trading pairs, if present.
+        ///
+        /// # Panics
+        ///
+        /// Will result in panic if the input token is the same as the target output token.
         pub fn swap(&mut self, tokens: Bucket, output_token: ResourceAddress) -> (Bucket, Option<Bucket>) {
             let input_token = tokens.resource_address();
             assert!(input_token != output_token, "Can't swap token into itself");
@@ -189,7 +251,24 @@ mod plazadex {
             }
         }
 
-        // Add liquidity to the exchange
+        /// Incorporates liquidity into the exchange returning liquidity tokens to the user.
+        ///
+        /// # Arguments
+        ///
+        /// * `tokens`: Bucket - The liquidity tokens intended to be added into the exchange.
+        /// * `base_token`: Option<ResourceAddress> - Optional parameter representing which token pair to put the
+        ///    liquidity in if the `tokens` are DFP2 tokens.
+        ///
+        /// # Returns
+        ///
+        /// Returns a `Bucket` of newly minted liquidity tokens.
+        ///
+        /// # Panics
+        ///
+        /// This function will crash in the following situations:
+        /// * When the `tokens` intended for the operation are not listed within the exchange.
+        /// * When `base_token` is given, but it is not registered within the exchange.
+        /// * When supplying DFP2 tokens without supplying a `base_token` address.
         pub fn add_liquidity(&mut self, tokens: Bucket, base_token: Option<ResourceAddress>) -> Bucket {
             let input_token = tokens.resource_address();
             let is_quote = input_token == self.dfp2;
@@ -205,7 +284,21 @@ mod plazadex {
             pair.add_liquidity(tokens, is_quote)
         }
 
-        // Remove liquidity from the exchange
+        /// Removes given liquidity from the exchange, returning two Buckets with the corresponding liquidity.
+        ///
+        /// # Arguments
+        ///
+        /// * `lp_tokens`: Bucket - The liquidity provider tokens to be taken out from the exchange.
+        ///
+        /// # Returns
+        ///
+        /// A tuple of `Bucket`, represents the tokens that are removed from the liquidity pool.
+        ///
+        /// # Panics
+        ///
+        /// The function will encounter a panic in the following scenarios:
+        /// * If `lp_tokens` doesn't correspond to a recognized pair within the exchange.
+        /// * If the pair linked to `lp_tokens` could not be located in the exchange's database.
         pub fn remove_liquidity(&mut self, lp_tokens: Bucket) -> (Bucket, Bucket) {
             // Select liquidity pair from database
             let lp_address = lp_tokens.resource_address();
@@ -216,7 +309,24 @@ mod plazadex {
             pair.remove_liquidity(lp_tokens, is_quote)
         }
 
-        // Get a quote for swapping two tokens
+        /// Executes a quote for a token swap in the DFP2 exchange environment based on all possible scenarios:
+        /// selling DFP2, buying DFP2, and indirect swaps through DFP2.
+        ///
+        /// # Arguments
+        /// 
+        /// * `input_token`: ResourceAddress - Token to be sold or swapped on the exchange.
+        /// * `input_amount`: Decimal - The volume of the `input_token` involved in the swap.
+        /// * `output_token`: ResourceAddress - The token expected to be received post-swap.
+        ///
+        /// # Returns
+        ///
+        /// A Decimal representing the potential quantity of the `output_token` after execution of the trade.
+        ///
+        /// # Panics
+        ///
+        /// The application will crash in the following instances:
+        /// * The `input_token` and `output_token` are the same (i.e., A token cannot be swapped with itself.)
+        /// * Either given `input_token` or `output_token` are not listed on the DFP2 exchange platform.
         pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
             // Verify tokens are all traded at the exchange
             assert!(input_token != output_token, "Can't swap token into itself");
