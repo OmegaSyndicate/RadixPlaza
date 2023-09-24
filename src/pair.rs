@@ -173,7 +173,7 @@ mod plazapair {
             input_bucket: Bucket,
         ) -> Bucket {
             let is_quote = input_bucket.resource_address() == self.quote_address;
-            
+
             // Retrieve appropriate liquidity pool
             let (pool, in_shortage) = match is_quote {
                 true => {
