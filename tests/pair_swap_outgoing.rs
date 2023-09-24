@@ -36,8 +36,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
         &mut env,
     )?;
 
-    let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, false, &mut env)?;
-    let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, true, &mut env)?;
+    let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+    let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
     Ok(func(env, &mut pair, base_bucket, quote_bucket)?)
 }

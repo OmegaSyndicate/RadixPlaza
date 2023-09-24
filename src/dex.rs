@@ -143,8 +143,8 @@ mod plazadex {
             );
 
             // Add liquidity to new pair
-            let base_lp_bucket = pair.add_liquidity(base_bucket.into(), false);
-            let dfp2_lp_bucket = pair.add_liquidity(dfp2_bucket.into(), true);
+            let base_lp_bucket = pair.add_liquidity(base_bucket.into());
+            let dfp2_lp_bucket = pair.add_liquidity(dfp2_bucket.into());
             let base_lp_address = base_lp_bucket.resource_address();
             let dfp2_lp_address = dfp2_lp_bucket.resource_address();
 
@@ -281,7 +281,7 @@ mod plazadex {
             };
 
             // Add liquidity and return output
-            pair.add_liquidity(tokens, is_quote)
+            pair.add_liquidity(tokens)
         }
 
         /// Removes given liquidity from the exchange, returning two Buckets with the corresponding liquidity.

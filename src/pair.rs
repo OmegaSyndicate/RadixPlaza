@@ -171,8 +171,9 @@ mod plazapair {
         pub fn add_liquidity(
             &mut self,
             input_bucket: Bucket,
-            is_quote: bool,
         ) -> Bucket {
+            let is_quote = input_bucket.resource_address() == self.quote_address;
+            
             // Retrieve appropriate liquidity pool
             let (pool, in_shortage) = match is_quote {
                 true => {
@@ -278,17 +279,8 @@ mod plazapair {
                         WithdrawStrategy::Exact
                     );
 
-                    // Also withdraw a complement of the main reserve
-                    let complement = new_lp_fraction * new_actual - input_amount;
-                    let mut complement_bucket = pool.protected_withdraw(
-                        min_liq_addr,
-                        complement,
-                        WithdrawStrategy::Exact
-                    );
-                    complement_bucket.put(input_bucket);
-
                     // Finally add the liquidity and add back the remainder
-                    let (lp_tokens, remainder) = pool.contribute((complement_bucket, other_bucket));
+                    let (lp_tokens, remainder) = pool.contribute((input_bucket, other_bucket));
                     if let Some(bucket) = remainder {
                         pool.protected_deposit(bucket);
                     }
