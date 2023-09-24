@@ -500,14 +500,17 @@ mod plazapair {
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             let delta_t = (t - new_state.last_outgoing).max(0);
-            let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
+            let factor = match self.config.decay_factor == ZERO {
+                true => ZERO,
+                false => Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap(),
+            };
 
             // Caculate the filtered reference price
             let mut p_ref_ss = match shortfall > ZERO {
                 true => calc_p0_from_curve(shortfall, surplus, new_state.target_ratio, self.config.k_in),
                 false => old_pref,
             };
-            let p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
+            let mut p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
 
             // Define running counters
             let mut amount_traded = ZERO;
@@ -544,12 +547,7 @@ mod plazapair {
                     let new_surplus = surplus - output_amount;
                     new_state.target_ratio = calc_target_ratio(p_ref_ss, new_actual, new_surplus, self.config.k_in);
                 } else {
-                    // Update running parameters for possible outgoing leg
-                    output_amount = surplus;
-                    amount_traded = adjusted_shortfall;
-                    p_ref_ss = ONE / p_ref;    
-
-                    // Set to equilibrium and switch pools for outgoing leg
+                    // Set to equilibrium and switch pools
                     new_state.shortage = Shortage::Equilibrium;
                     new_state.target_ratio = ONE;
                     pool = match pool == &self.base_pool {
@@ -565,7 +563,13 @@ mod plazapair {
                         },
                     };
                     let reserves = pool.get_vault_amounts();
-                    actual = *reserves.get_index(0).map(|(_addr, amount)| amount).unwrap();                    
+                    actual = *reserves.get_index(0).map(|(_addr, amount)| amount).unwrap();
+
+                    // Update running parameters for possible outgoing leg
+                    output_amount = surplus;
+                    amount_traded = adjusted_shortfall;
+                    p_ref = ONE / p_ref;
+                    p_ref_ss = p_ref;
                 }
             }
 
