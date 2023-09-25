@@ -115,6 +115,7 @@ fn gives_correct_incoming_spot_price_quote_shortage() -> Result<(), RuntimeError
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;
+        env.set_current_time(Instant::new(3391331280));
 
         let input_quote_amount = dec!("0.000001");
         let (output, _) = pair.swap(quote_bucket.take(input_quote_amount, &mut env)?, &mut env)?;
@@ -161,6 +162,7 @@ fn gives_correct_outgoing_spot_price_quote_shortage() -> Result<(), RuntimeError
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;
+        env.set_current_time(Instant::new(3391331280));
 
         let input_base_amount = dec!("0.0000136");
         let (output, _) = pair.swap(base_bucket.take(input_base_amount, &mut env)?, &mut env)?;
@@ -184,6 +186,7 @@ fn gives_correct_incoming_spot_price_base_shortage() -> Result<(), RuntimeError>
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;
+        env.set_current_time(Instant::new(3391331280));
 
         let input_base_amount = dec!("0.000001");
         let (output, _) = pair.swap(base_bucket.take(input_base_amount, &mut env)?, &mut env)?;
@@ -229,6 +232,7 @@ fn gives_correct_outgoing_spot_price_base_shortage() -> Result<(), RuntimeError>
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;
+        env.set_current_time(Instant::new(3391331280));
 
         let input_quote_amount = dec!("0.0000136");
         let (output, _) = pair.swap(quote_bucket.take(input_quote_amount, &mut env)?, &mut env)?;
@@ -252,6 +256,7 @@ fn trades_correct_amount_quote_shortage() -> Result<(), RuntimeError> {
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
+        env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(quote_bucket.take(dec!(750), &mut env)?, &mut env)?;
  
         let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
@@ -285,6 +290,7 @@ fn trades_correct_amount_base_shortage() -> Result<(), RuntimeError> {
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
+        env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(base_bucket.take(dec!(750), &mut env)?, &mut env)?;
  
         let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
@@ -317,6 +323,7 @@ fn trades_correct_amount_accross_eq_from_quote_shortage() -> Result<(), RuntimeE
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
+        env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(quote_bucket.take(dec!(2625), &mut env)?, &mut env)?;
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");
@@ -350,6 +357,7 @@ fn trades_correct_amount_accross_eq_from_base_shortage() -> Result<(), RuntimeEr
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
+        env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(base_bucket.take(dec!(2625), &mut env)?, &mut env)?;
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");

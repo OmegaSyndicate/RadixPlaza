@@ -154,8 +154,14 @@ mod plazadex {
                 .unwrap_or(Some("XXXXX".to_owned())).unwrap_or("XXXXX".to_owned());
             let base_name = format!("Defiplaza {} Base", symbol);
             let quote_name = format!("Defiplaza {} Quote", symbol);
-            let base_icon = format!("https://assets.defiplaza.net/lptokens/{}_base.png", base_manager.address().to_hex());
-            let quote_icon = format!("https://assets.defiplaza.net/lptokens/{}_quote.png", base_manager.address().to_hex());
+            let base_icon = format!(
+                "https://assets.defiplaza.net/lptokens/{}_base.png",
+                Runtime::bech32_encode_address(base_manager.address())
+            );
+            let quote_icon = format!(
+                "https://assets.defiplaza.net/lptokens/{}_quote.png",
+                Runtime::bech32_encode_address(base_manager.address())
+            );
 
             // Assign metadata
             let base_lp_manager = ResourceManager::from(base_lp_address);
@@ -327,7 +333,12 @@ mod plazadex {
         /// The application will crash in the following instances:
         /// * The `input_token` and `output_token` are the same (i.e., A token cannot be swapped with itself.)
         /// * Either given `input_token` or `output_token` are not listed on the DFP2 exchange platform.
-        pub fn quote(&self, input_token: ResourceAddress, input_amount: Decimal, output_token: ResourceAddress) -> Decimal {
+        pub fn quote(
+            &self,
+            input_token: ResourceAddress,
+            input_amount: Decimal,
+            output_token: ResourceAddress
+        ) -> Decimal {
             // Verify tokens are all traded at the exchange
             assert!(input_token != output_token, "Can't swap token into itself");
 

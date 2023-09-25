@@ -492,10 +492,7 @@ mod plazapair {
             // Compute time since previous trade and resulting decay factor for the filter
             let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             let delta_t = (t - new_state.last_outgoing).max(0);
-            let factor = match self.config.decay_factor == ZERO {
-                true => ZERO,
-                false => Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap(),
-            };
+            let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
 
             // Caculate the filtered reference price
             let mut p_ref_ss = match shortfall > ZERO {
