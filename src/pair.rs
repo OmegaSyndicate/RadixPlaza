@@ -8,6 +8,14 @@ use crate::types::*;
 #[blueprint]
 #[events(SwapEvent, AddLiquidityEvent, RemoveLiquidityEvent)]
 mod plazapair {
+    enable_package_royalties! {
+        instantiate_pair => Free;
+        add_liquidity => Free;
+        remove_liquidity => Free;
+        quote => Free;
+        swap => Usd(dec!(0.1).into());
+    }
+
     /// `PlazaPair` struct represents a liquidity pair with fixed configuration
     ///
     /// ## Description
