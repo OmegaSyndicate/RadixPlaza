@@ -1,0 +1,95 @@
+\RequirePackage{snapshot}
+\documentclass [10pt, twoside] {article}
+\usepackage{float, graphicx, caption, amssymb, natbib}
+\usepackage[usenames,dvipsnames]{color}
+\usepackage{tabulary}
+\usepackage [left=2.5cm, top=2.5cm, bottom=2.5cm, right=3cm] {geometry}  %% see geometry.pdf on how to lay out the page. There's lots.
+\geometry{a4paper} %% or letter or a5paper or ... etc
+\usepackage{fancyhdr}
+\usepackage{xcolor}
+\usepackage[scaled]{helvet}
+\usepackage{amsmath}
+\usepackage{url}
+%\usepackage{draftwatermark}
+\renewcommand*\familydefault{\sfdefault} %% Only if the base font of the document is to be sans serif
+
+%\usepackage[left]{lineno}
+\usepackage[yyyymmdd,hhmmss]{datetime}
+
+%\renewcommand{\linenumberfont}{\normalfont\tiny\color{gray}}
+\newcommand{\version}{{v0.2}}
+
+\pagestyle{fancy}
+\fancyhead{}
+\fancyfoot{}
+
+\fancyhead[L]{\textbf{StablePlaza whitepaper}}
+\fancyhead[R]{\version}
+\fancyfoot[RO,LE]{Page \thepage}
+
+\usepackage{blindtext}
+
+\newcounter {note}
+\stepcounter{note}
+
+\renewcommand{\abstractname}{Abstract}
+
+\newcommand {\Note} [1] {
+    \marginpar {
+        \tiny {
+            {\color{gray}{\thenote  \  #1}}
+            }
+        }
+    \stepcounter {note}
+}
+
+\newcommand {\MNote} [1] {
+    \marginpar {
+        \tiny {
+            {\color{gray}{#1 }}
+            }
+        }
+}
+
+\begin{document}
+
+\title{DefiPlaza: Bringing sustainable DeFi to Radix}
+\author {\version { }- Jazzer9F}
+
+\date{\today}
+
+\maketitle
+
+\begin{abstract}
+In this whitepaper, we present the design for DefiPlaza on Radix. We are building a highly efficient decentralized exchange designed to prioritize sustainable profitability for Liquidity Providers (LPs). The primary challenge faced by LPs is Impermanent Loss, which is effectively mitigated by DefiPlaza through the implementation of an innovative swap algorithm. This advanced algorithm encompasses single-sided liquidity, passive liquidity concentration, and an internal price oracle. The unique aspect of DefiPlaza's exchange lies in its provision of reduced liquidity depth when executing trades that deviate from equilibrium, compared to those converging towards it. As a result, this approach substantially diminishes the risk of impermanent loss.
+\end{abstract}
+
+%\linenumbers
+
+\section{Introduction}
+
+\section{A different way of looking at liquidity}
+
+
+
+\section{Concentrated Asymmetric Liquidity Model (CALM)}
+DefiPlaza builds on the Dodo approach to trading liquidity, improving on it in several ways. We utilize an internal price oracle - a feature inspired by Curve's model, and effectively do away with the need for an external one. Not requiring an external price signal to function yields a significant improvement to safety as oracle pricing is a common point of failure and/or attacks in DeFi. Furthermore, increasing the price of a token when that token is in shortage realizes a loss for the liquidity providers. In the Curve liquidity model, the reference price is only updated if the fee income is sufficiently large to do so, allocating up to 50\% of the fee income to reference price updates. In DefiPlaza, the liquidity concentration for trades away from equilbrium is more sparse than that for trades restoring equilibrium, thereby guaranteeing the reference price can be updated into the direction of the market price regardless of fee income. 
+
+The importance of computational efficiency is acknowledged through DefiPlaza’s explicit resolution of quadratic equations. Moreover, the provision of liquidity has seen an advancement, with fair distribution of LP tokens at prevailing market prices.
+\section{Examples}
+
+\section{Future opportunities}
+
+\input{Appendix}
+
+
+%\input{01_introduction}
+%\input{02_anchored_liquidity}
+%\input{03_stableplaza}
+%\input{04_results}
+%\input{05_summary}
+
+\bibliographystyle{plain}
+\bibliography{references}{}
+
+\end{document}

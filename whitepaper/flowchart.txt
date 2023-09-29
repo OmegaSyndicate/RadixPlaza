@@ -1,0 +1,10 @@
+flowchart TD
+    A[swap] --> B{towards eq?}
+    B -->|Yes| C(update p0)
+    C -->D(calculate DeltaQ)
+    D -->E(subtract fee)
+    E -->F(send tokens)
+    F -->G[done]
+    B -->|No| H(calculate p0')
+    H -->I(calculate DeltaQ')
+    I -->J(calculate DeltaB) -->E

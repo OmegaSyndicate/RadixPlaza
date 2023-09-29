@@ -1,0 +1,59 @@
+\RequireVersions{
+  *{application}{pdfTeX}  {0000/00/00 v1.40.24}
+  *{format} {LaTeX2e}     {2021-11-15 v2.e}
+  *{package}{snapshot}    {2020/06/17 v2.14}
+  *{class}  {article}     {2021/10/04 v1.4n}
+  *{file}   {size10.clo}  {2021/10/04 v1.4n}
+  *{package}{float}       {2001/11/08 v1.3d}
+  *{package}{graphicx}    {2021/09/16 v1.2d}
+  *{package}{keyval}      {2014/10/28 v1.15}
+  *{package}{graphics}    {2021/03/04 v1.4d}
+  *{package}{trig}        {2021/08/11 v1.11}
+  *{file}   {graphics.cfg}{2016/06/04 v1.11}
+  *{file}   {pdftex.def}  {2020/10/05 v1.2a}
+  *{package}{caption}     {2022/03/01 v3.6b}
+  *{package}{caption3}    {2022/03/17 v2.3b}
+  *{package}{amssymb}     {2013/01/14 v3.01}
+  *{package}{amsfonts}    {2013/01/14 v3.01}
+  *{package}{natbib}      {2010/09/13 v8.31b}
+  *{package}{color}       {1999/02/16 v0.0}
+  *{file}   {color.cfg}   {2016/01/02 v1.6}
+  *{file}   {dvipsnam.def}{2016/06/17 v3.0m}
+  *{package}{tabulary}    {2014/06/11 v0.10}
+  *{package}{array}       {2021/10/04 v2.5f}
+  *{package}{geometry}    {2020/01/02 v5.9}
+  *{package}{ifvtex}      {2019/10/25 v1.7}
+  *{package}{iftex}       {2022/02/03 v1.0f}
+  *{package}{fancyhdr}    {2021/01/28 v4.0.1}
+  *{package}{xcolor}      {2021/10/31 v2.13}
+  *{file}   {color.cfg}   {2016/01/02 v1.6}
+  *{package}{helvet}      {2020/03/25 v9.3}
+  *{package}{amsmath}     {2021/10/15 v2.17l}
+  *{package}{amstext}     {2021/08/26 v2.01}
+  *{package}{amsgen}      {1999/11/30 v2.0}
+  *{package}{amsbsy}      {1999/11/29 v1.2d}
+  *{package}{amsopn}      {2021/08/26 v2.02}
+  *{package}{url}         {2013/09/16 v3.4}
+  *{package}{datetime}    {2015/03/20 v2.60}
+  *{package}{etoolbox}    {2020/10/05 v2.5k}
+  *{package}{fmtcount}    {2020/01/30 v3.07}
+  *{package}{ifthen}      {2020/11/24 v1.1c}
+  *{package}{xkeyval}     {2020/11/20 v2.8}
+  *{file}   {xkeyval.tex} {2014/12/03 v2.7a}
+  *{package}{fcprefix}    {2012/09/28 v0.0}
+  *{package}{fcnumparser} {2017/06/15 v0.0}
+  *{package}{datetime-defaults}{2013/09/10 v0.0}
+  *{package}{blindtext}   {2012/01/06 v2.0}
+  *{package}{xspace}      {2014/10/28 v1.13}
+  *{file}   {ot1phv.fd}   {2020/03/25 v1/phv.}
+  *{file}   {l3backend-pdftex.def}{2022-02-07 v3}
+  *{file}   {umsa.fd}     {2013/01/14 v3.01}
+  *{file}   {umsb.fd}     {2013/01/14 v3.01}
+  *{-------}{Document-specific files:}{----}
+  *{file}   {supp-pdf.mkii}{0000/00/00 v0.0}
+  *{package}{epstopdf-base}{2020-01-24 v2.11}
+  *{file}   {epstopdf-sys.cfg}{2010/07/13 v1.3}
+  *{file}   {fc-english.def}{2016/01/12 v0.0}
+  *{file}   {Appendix}    {0000/00/00 v0.0}
+  *{file}   {flowchart.png}{Graphic v0.0}
+}

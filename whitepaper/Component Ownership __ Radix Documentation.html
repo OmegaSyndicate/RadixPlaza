@@ -1,0 +1,788 @@
+<!DOCTYPE html>
+<!-- saved from url=(0084)https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/component-ownership.html -->
+<html lang="en"><head><meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Component Ownership :: Radix Documentation</title>
+<link rel="canonical" href="https://docs.radixdlt.com/main/scrypto/scrypto-lang/component-ownership.html">
+<meta name="generator" content="Antora 2.3.4">
+<link rel="stylesheet" href="./Component Ownership __ Radix Documentation_files/site.css">
+<link rel="stylesheet" href="./Component Ownership __ Radix Documentation_files/font-awesome.min.css">
+<link rel="stylesheet" href="./Component Ownership __ Radix Documentation_files/extras.css">
+<link rel="stylesheet" href="./Component Ownership __ Radix Documentation_files/search.css">
+<link rel="stylesheet" href="./Component Ownership __ Radix Documentation_files/search-nav.css">
+<link href="https://assets-global.website-files.com/6053f7fca5bf627283b582c2/60899984b5d494d99cdc8411_Square%20Icon%2032x32.png" rel="shortcut icon" type="image/x-icon">
+<link href="https://assets-global.website-files.com/6053f7fca5bf627283b582c2/6089990385fcd7a4e9048f77_Square%20Icon%20256x256.png" rel="apple-touch-icon">
+<script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/main.MTJmOGM0MDk1MQ.js" data-id="CI5IHVBC77UDF7B28180"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/js"></script><script type="text/javascript" id="www-widgetapi-script" src="./Component Ownership __ Radix Documentation_files/www-widgetapi.js" async=""></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/analytics.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/js(1)"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/events.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/iframe_api"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/uwt.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/insight.min.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/pixel.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/uwt.js"></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/insight.min.js"></script><script gtm="GTM-PKNDV4C" type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/optimize.js"></script><script src="./Component Ownership __ Radix Documentation_files/224300662767970" async=""></script><script type="text/javascript" async="" src="./Component Ownership __ Radix Documentation_files/fbevents.js"></script><script async="" src="./Component Ownership __ Radix Documentation_files/gtm.js"></script><script async="" src="./Component Ownership __ Radix Documentation_files/gtm.js"></script><script>var uiRootPath = '../../../_'</script>
+
+<script>
+        (function(h,o,t,j,a,r){
+            h.hj=h.hj||function(){(h.hj.q=h.hj.q||[]).push(arguments)};
+            h._hjSettings={hjid:1904304,hjsv:6};
+            a=o.getElementsByTagName('head')[0];
+            r=o.createElement('script');r.async=1;
+            r.src=t+h._hjSettings.hjid+j+h._hjSettings.hjsv;
+            a.appendChild(r);
+        })(window,document,'https://static.hotjar.com/c/hotjar-','.js?sv=');
+    </script><script async="" src="./Component Ownership __ Radix Documentation_files/hotjar-1904304.js"></script>
+
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-PKNDV4C');</script>
+
+<script async="" src="./Component Ownership __ Radix Documentation_files/modules.6b15d95870354fc25d31.js" charset="utf-8"></script><script charset="utf-8" src="./Component Ownership __ Radix Documentation_files/identify_185ec.js"></script></head>
+<body class="article">
+
+<script>(function(w,d,s,l,i){w[l]=w[l]||[];w[l].push({'gtm.start':
+    new Date().getTime(),event:'gtm.js'});var f=d.getElementsByTagName(s)[0],
+    j=d.createElement(s),dl=l!='dataLayer'?'&l='+l:'';j.async=true;j.src=
+    'https://www.googletagmanager.com/gtm.js?id='+i+dl;f.parentNode.insertBefore(j,f);
+    })(window,document,'script','dataLayer','GTM-PKNDV4C');</script>
+
+<header class="header">
+<nav class="navbar">
+<div class="navbar-container">
+<div class="navbar-spacer"></div>
+<div class="radix-logo">
+<a rel="home" href="https://www.radixdlt.com/"><img src="./Component Ownership __ Radix Documentation_files/radix-logo.svg"></a>
+</div>
+<div id="topbar-nav" class="navbar-menu">
+<ul class="menu">
+<li class="navbar-item">
+<a class="navbar-item-body" href="https://developers.radixdlt.com/">Radix Developers site</a>
+</li>
+<li class="navbar-item">
+<a class="navbar-item-body" href="https://discord.com/invite/WkB2USt">Discord</a>
+</li>
+</ul>
+</div>
+
+</div>
+</nav>
+</header>
+<div class="body">
+<div class="nav-container" data-component="main" data-version="master">
+<aside class="nav">
+<div class="panels">
+
+<div class="search-box-div">
+<input id="search-input" type="text" placeholder="search docs …">
+<div class="search-result-dropdown-menu"></div></div>
+<div class="nav-panel-menu is-active" data-panel="menu">
+<nav class="nav-menu">
+<h3 class="title"><a href="https://docs-babylon.radixdlt.com/main/index.html">RCnet</a></h3>
+<ul class="nav-list">
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/index.html">Welcome to Babylon (RCnet)</a>
+</li>
+<li class="nav-item" data-depth="1">
+<span class="nav-text"><a href="https://docs.radixdlt.com/" target="_blank" rel="noopener">Olympia Mainnet Docs</a></span>
+</li>
+<li class="nav-item" data-depth="1">
+<span class="nav-text">​</span>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/getting-started-developers.html">Getting Started: Developers</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/what-is-a-dapp.html">What is a dApp on Radix?</a>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/wallet/wallet-overview.html">Radix Wallet Overview</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/wallet/wallet-and-connector-installation.html">Radix Wallet Installation</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/radix-dashboard.html">Radix Dashboard</a>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/dapp-frontend/building-a-pure-frontend.html">Building a Pure Frontend dApp</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/dapp-frontend/dapp-definition-setup.html">Setting up your dApp Definition</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/dapp-backend/building-a-full-stack-dapp.html">Building a Full Stack dApp</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-developers/first-component/run-first-project.html">Run Your First Project</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Getting Started: Integrators</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-integrators/validators.html">Validator Node-Runners</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-integrators/exchanges.html">Exchanges</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/getting-started-integrators/gateways.html">Gateway Service Providers</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item is-active is-current-path" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<span class="nav-text">​</span>
+</li>
+<li class="nav-item is-active is-current-path" data-depth="1">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/introduction.html">Scrypto</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Toolchain</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/install-scrypto.html">Install Scrypto Toolchain</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/updating-scrypto.html">Update Scrypto</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/setting-up-vscode.html">Configure Your IDE</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/commandline-tools.html">Command-line Tools</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/cheat-sheet.html">CLI Cheat Sheet</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/filesystem-layout.html">Package Filesystem Layout</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/toolchain/using-resim.html">Using Resim</a>
+</li>
+</ul>
+</li>
+<li class="nav-item is-active is-current-path" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Language Description</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/blueprints-and-components.html">Blueprints and Components</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/data-types.html">Data Types</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/functions-and-methods.html">Functions and Methods</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/logging.html">Logging</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/cross-blueprint-calls.html">Cross-blueprint Calls</a>
+</li>
+<li class="nav-item is-current-page is-active" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/component-ownership.html">Component Ownership</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Resources</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/introduction.html">Introduction</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/fungible-resources.html">Fungible Resources</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/non-fungible-resources.html">Non-fungible Resources</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/resource-behaviors.html">Resource Behaviors</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/vaults-and-buckets.html">Vaults and Buckets</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/resources/resource-manager.html">The Resource Manager</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Access Control</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/access-control/access-introduction.html">Introduction</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/access-control/access-setting.html">Setting Access Rules</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/access-control/restricting-component-methods.html">Restricting Methods</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/access-control/restricting-resource-actions.html">Restricting Resource Actions</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">System Features</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/runtime.html">Runtime</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/fees.html">Fees</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/addressing.html">Addressing</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/recalling-resources.html">Recalling resources</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/vault-freezing.html">Freezing vaults</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/entity-metadata.html">Entity Metadata</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/system/developer-royalties.html">Developer Royalties</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/index.html">Design Patterns</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/user-badge-pattern.html">User Badge Pattern</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/actor-virtual-badge-pattern.html">Actor Virtual Badge Pattern</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/withdraw-pattern.html">Withdraw Pattern</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/transient-badge-pattern.html">Transient Badge Pattern</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/design-patterns/reusable-blueprint-pattern.html">Reusable Blueprint Pattern</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Native Blueprints</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/native-blueprints/accounts.html">Accounts</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/native-blueprints/resource-pools.html">Pools</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Examples</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/examples/hello-world.html">Hello, World!</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/examples/hello-nft.html">Hello, NFT!</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/examples/gumball-machine.html">Gumball Machine</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/examples/managed-access.html">Managed Access</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/examples/regulated-token.html">Regulated Token</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Release Notes</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/migrating_from_0.9_to_.10.html">Migrating v0.9 to v0.10/11</a>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Old Notes</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.3_to_0.4.html">Migrating v0.3 to v0.4</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.4_to_0.5.html">Migrating v0.4 to v0.5</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.5_to_0.6.html">Migrating v0.5 to v0.6</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.6_to_0.7.html">Migrating v0.6 to v0.7</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.7_to_0.8.html">Migrating v0.7 to v0.8</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/release_notes/old/migrating_from_0.8_to_0.9.html">Migrating v0.8 to v0.9</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/scrypto/references/references.html">References</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Radix Node &amp; Gateway</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/software-introduction.html">Overview</a>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Node</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/node-introduction.html">Introduction</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/olympia-to-babylon-migration.html">Olympia to Babylon node migration</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/stokenet-migration.html">Babylon migration (for Stokenet node runners)</a>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Setup</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/node-setup-introduction.html">Setup Introduction</a>
+</li>
+<li class="nav-item" data-depth="4">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">CLI Method (recommended)</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/cli-install.html">Install the CLI</a>
+</li>
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/cli-install-node.html">Install the Node</a>
+</li>
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/cli-update-node.html">Update the Node</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="4">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Manual Method</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="5">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Docker-compose mode</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/docker-install-node.html">Install the Node</a>
+</li>
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/docker-register-as-validator.html">Register as a Validator</a>
+</li>
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/docker-update-node.html">Update the Node</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="5">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Systemd mode</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/systemd-install-node.html">Install the Node</a>
+</li>
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/systemd-register-as-validator.html">Register as a Validator</a>
+</li>
+<li class="nav-item" data-depth="6">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/systemd-update-node.html">Update the Node</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Validator Setup</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/register-as-validator.html">Registration</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Maintenance</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/monitoring-health.html">Monitoring Health</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/optimizing-performance.html">Optimizing Performance</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Additional Resources</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/cli-command-reference.html">CLI Command Reference</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Network Gateway</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway.html">Overview</a>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Setup</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-setup.html">Setup Introduction</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-setup-using-cli.html">Setup with CLI</a>
+</li>
+<li class="nav-item" data-depth="4">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Custom Setup</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-setup-custom.html">Custom Setup Introduction</a>
+</li>
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-setup-custom-requirements.html">Requirements</a>
+</li>
+<li class="nav-item" data-depth="5">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-setup-custom-configuration.html">Configuration</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="3">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Maintenance</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-monitoring.html">Monitoring</a>
+</li>
+<li class="nav-item" data-depth="4">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/network-gateway-releasing.html">Releasing</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/node-and-gateway/install-grafana-dashboard.html">Grafana Dashboard</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Radix APIs</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/apis/introduction.html">Introduction</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/apis/api-specification.html">API Specifcations</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Frontend Tools</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/frontend/radix-dapp-toolkit.html">Radix dApp Toolkit</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/frontend/wallet-sdk.html">Wallet SDK</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/frontend/gateway-sdk.html">Gateway SDK</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/frontend/radix-engine-toolkit.html">Radix Engine Toolkit</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/frontend/rola.html">ROLA for logins and proofs</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/standards/metadata-standard-introduction.html">Metadata Standards</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/standards/metadata-for-wallet-display.html">Metadata for Wallet Display</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/standards/metadata-for-verification.html">Metadata for Verification</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<span class="nav-text" style="cursor: pointer;">Reference Materials</span>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/reference-materials/resource-addressing.html">Resource Addressing</a>
+</li>
+<li class="nav-item" data-depth="2">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/reference-materials/known-addresses.html">Known Addresses</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/support/index.html">Support</a>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/transaction-manifest/intro.html">Transaction Manifest</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="2">
+<button class="nav-item-toggle"></button>
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/transaction-manifest/writing-manifests/writing-manifests.html">Writing a Transaction Manifests</a>
+<ul class="nav-list">
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/transaction-manifest/writing-manifests/rust-manifestbuilder.html">Rust ManifestBuilder</a>
+</li>
+<li class="nav-item" data-depth="3">
+<a class="nav-link" href="https://docs-babylon.radixdlt.com/main/transaction-manifest/writing-manifests/specs.html">Specifications</a>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+</ul>
+</li>
+<li class="nav-item" data-depth="0">
+<ul class="nav-list">
+<li class="nav-item" data-depth="1">
+<span class="nav-text">​</span>
+</li>
+<li class="nav-item" data-depth="1">
+<span class="nav-text"><a href="https://github.com/radixdlt" target="_blank" rel="noopener">RadixDLT GitHub Org</a></span>
+</li>
+<li class="nav-item" data-depth="1">
+<span class="nav-text"><a href="https://learn.radixdlt.com/" target="_blank" rel="noopener">Radix Knowledge Base</a></span>
+</li>
+<li class="nav-item" data-depth="1">
+<span class="nav-text">​</span>
+</li>
+</ul>
+</li>
+</ul>
+</nav>
+</div>
+<div class="nav-panel-explore" data-panel="explore">
+<div class="context">
+<span class="title">RCnet</span>
+<span class="version">RCnet</span>
+</div>
+<ul class="components">
+<li class="component is-current">
+<a class="title" href="https://docs-babylon.radixdlt.com/main/index.html">RCnet</a>
+<ul class="versions">
+<li class="version is-current is-latest">
+<a href="https://docs-babylon.radixdlt.com/main/index.html">RCnet</a>
+</li>
+</ul>
+</li>
+</ul>
+</div>
+</div>
+</aside>
+</div>
+<main class="article">
+<div class="toolbar" role="navigation">
+<div class="toolbar-container">
+<button class="nav-toggle"></button>
+<a href="https://docs-babylon.radixdlt.com/main/index.html" class="home-link"></a>
+<nav class="breadcrumbs" aria-label="breadcrumbs">
+<ul>
+<li><a href="https://docs-babylon.radixdlt.com/main/index.html">RCnet</a></li>
+<li><a href="https://docs-babylon.radixdlt.com/main/scrypto/introduction.html">Scrypto</a></li>
+<li>Language Description</li>
+<li><a href="https://docs-babylon.radixdlt.com/main/scrypto/scrypto-lang/component-ownership.html">Component Ownership</a></li>
+</ul>
+</nav>
+</div>
+</div>
+<div class="content">
+
+<article class="doc">
+<h1 class="page">Component Ownership</h1>
+<div class="paragraph">
+<p>Scrypto allows a component to own other components, similar to how a component can own vaults. If a component is owned by another component, its methods may only be accessed by the blueprint of the parent component.</p>
+</div>
+<div class="paragraph">
+<p>An example of component ownership:</p>
+</div>
+<div class="listingblock">
+<div class="content">
+<pre class="highlightjs highlight"><code class="language-rust hljs" data-lang="rust"><span class="hljs-keyword">use</span> scrypto::prelude::*;
+
+<span class="hljs-meta">#[blueprint]</span>
+<span class="hljs-keyword">mod</span> child {
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Child</span></span> {
+        name: <span class="hljs-built_in">String</span>,
+    }
+
+    <span class="hljs-keyword">impl</span> Child {
+        <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new_component</span></span>(name: <span class="hljs-built_in">String</span>) -&gt; ChildComponent {
+            <span class="hljs-keyword">Self</span> {
+                name
+            }.instantiate()
+        }
+
+        <span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">get_name</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">String</span> {
+            <span class="hljs-keyword">self</span>.name.to_string()
+        }
+    }
+}
+
+<span class="hljs-meta">#[blueprint]</span>
+<span class="hljs-keyword">mod</span> parent {
+    <span class="hljs-class"><span class="hljs-keyword">struct</span> <span class="hljs-title">Parent</span></span> {
+        child0: ChildComponent,
+        child1: ChildComponent,
+    }
+
+    <span class="hljs-keyword">impl</span> Parent {
+        <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new_component</span></span>() -&gt; ParentComponent {
+            <span class="hljs-keyword">let</span> child0: ChildComponent = Child::new(<span class="hljs-string">"child0"</span>.to_string());
+            <span class="hljs-keyword">let</span> child1: ChildComponent = Child::new(<span class="hljs-string">"child1"</span>.to_string());
+
+            <span class="hljs-comment">// Move the two child components into a new parent component</span>
+            <span class="hljs-keyword">let</span> parent_component = <span class="hljs-keyword">Self</span> {
+                child0,
+                child1,
+            }.instantiate();
+
+            <span class="hljs-comment">// child0 and child1 are now owned by this parent_component</span>
+            parent_component
+        }
+
+        <span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">new_globalized</span></span>() -&gt; Global&lt;Parent&gt; {
+            Self::new_component()
+            .prepare_to_globalize(OwnerRole::<span class="hljs-literal">None</span>)
+            .globalize()
+        }
+
+        <span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">get_child0_name</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">String</span> {
+            <span class="hljs-keyword">self</span>.child0.get_name()
+        }
+
+        <span class="hljs-keyword">pub</span> <span class="hljs-function"><span class="hljs-keyword">fn</span> <span class="hljs-title">get_child1_name</span></span>(&amp;<span class="hljs-keyword">self</span>) -&gt; <span class="hljs-built_in">String</span> {
+            <span class="hljs-keyword">self</span>.child1.get_name()
+        }
+    }
+}</code><div class="source-toolbox"><span class="source-lang">rust</span><button class="copy-button" title="Copy to clipboard"><img src="./Component Ownership __ Radix Documentation_files/octicons-16.svg" alt="copy icon" class="copy-icon"><span class="copy-toast">Copied!</span></button></div></pre>
+</div>
+</div>
+<div class="paragraph">
+<p>Note in the above example how the name of the struct gets an automatic suffix of <code>Component</code> when instantiated. We are still iterating on finding the best way to handle this, and this may change in the future.</p>
+</div>
+</article>
+</div>
+</main>
+</div>
+<footer class="footer">
+<p>The RadixDLT Technical Documentation site – built
+with <a href="https://asciidoc.org/">AsciiDoc</a>, <a href="https://antora.org/">Antora</a> and <a href="https://lunrjs.com/">lunr
+search</a>.</p>
+</footer>
+<script src="./Component Ownership __ Radix Documentation_files/site.js"></script><script type="text/javascript" id="">!function(d,g,e){d.TiktokAnalyticsObject=e;var a=d[e]=d[e]||[];a.methods="page track identify instances debug on off once ready alias group enableCookie disableCookie".split(" ");a.setAndDefer=function(b,c){b[c]=function(){b.push([c].concat(Array.prototype.slice.call(arguments,0)))}};for(d=0;d<a.methods.length;d++)a.setAndDefer(a,a.methods[d]);a.instance=function(b){b=a._i[b]||[];for(var c=0;c<a.methods.length;c++)a.setAndDefer(b,a.methods[c]);return b};a.load=function(b,c){var f="https://analytics.tiktok.com/i18n/pixel/events.js";
+a._i=a._i||{};a._i[b]=[];a._i[b]._u=f;a._t=a._t||{};a._t[b]=+new Date;a._o=a._o||{};a._o[b]=c||{};c=document.createElement("script");c.type="text/javascript";c.async=!0;c.src=f+"?sdkid\x3d"+b+"\x26lib\x3d"+e;b=document.getElementsByTagName("script")[0];b.parentNode.insertBefore(c,b)};a.load("CI5IHVBC77UDF7B28180");a.page()}(window,document,"ttq");</script><iframe id="_hjSafeContext_38508164" title="_hjSafeContext" tabindex="-1" aria-hidden="true" src="./Component Ownership __ Radix Documentation_files/saved_resource.html" data-gtm-yt-inspected-30999995_141="true" style="display: none !important; width: 1px !important; height: 1px !important; opacity: 0 !important; pointer-events: none !important;"></iframe>
+<script src="./Component Ownership __ Radix Documentation_files/lunr.js"></script>
+<script src="./Component Ownership __ Radix Documentation_files/search.js" id="search-script" data-base-path="../../.." data-page-path="/main/scrypto/scrypto-lang/component-ownership.html"></script>
+<script async="" src="./Component Ownership __ Radix Documentation_files/search-index.js"></script>
+<script async="" src="./Component Ownership __ Radix Documentation_files/highlight.js"></script>
+
+
+<img src="./Component Ownership __ Radix Documentation_files/adsct" height="1" width="1" style="display: none;"><img src="./Component Ownership __ Radix Documentation_files/adsct(1)" height="1" width="1" style="display: none;"><img src="./Component Ownership __ Radix Documentation_files/adsct(2)" height="1" width="1" style="display: none;"><img src="./Component Ownership __ Radix Documentation_files/adsct(3)" height="1" width="1" style="display: none;"></body><iframe id="__JSBridgeIframe_1.0__" title="jsbridge___JSBridgeIframe_1.0__" data-gtm-yt-inspected-30999995_141="true" style="display: none;" src="./Component Ownership __ Radix Documentation_files/saved_resource(1).html"></iframe><iframe id="__JSBridgeIframe_SetResult_1.0__" title="jsbridge___JSBridgeIframe_SetResult_1.0__" data-gtm-yt-inspected-30999995_141="true" style="display: none;" src="./Component Ownership __ Radix Documentation_files/saved_resource(2).html"></iframe><iframe id="__JSBridgeIframe__" title="jsbridge___JSBridgeIframe__" data-gtm-yt-inspected-30999995_141="true" style="display: none;" src="./Component Ownership __ Radix Documentation_files/saved_resource(3).html"></iframe><iframe id="__JSBridgeIframe_SetResult__" title="jsbridge___JSBridgeIframe_SetResult__" data-gtm-yt-inspected-30999995_141="true" style="display: none;" src="./Component Ownership __ Radix Documentation_files/saved_resource(4).html"></iframe></html>
