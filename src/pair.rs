@@ -13,7 +13,7 @@ mod plazapair {
         add_liquidity => Free;
         remove_liquidity => Free;
         quote => Free;
-        swap => Usd(dec!(0.1).into());
+        swap => _SWAP_ROYALTY;
     }
 
     /// `PlazaPair` struct represents a liquidity pair with fixed configuration
