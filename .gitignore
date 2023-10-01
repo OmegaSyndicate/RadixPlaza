@@ -2,3 +2,4 @@
 /target
 todo.txt
 .DS_Store
+*.csv
