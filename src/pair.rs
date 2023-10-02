@@ -85,7 +85,7 @@ mod plazapair {
             assert!(quote_bucket.amount() == MIN_LIQUIDITY, "Invalid quote amount");
             assert!(config.k_in >= MIN_K_IN, "Invalid k_in value");
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
-            assert!(config.k_out == ONE || config.k_out < CLIP_K_OUT, "Invalid k_out value");
+            assert!(config.k_out < CLIP_K_OUT_1 || config.k_out == ONE || config.k_out > CLIP_K_OUT_2, "Invalid k_out value");
             assert!(config.fee >= ZERO && config.fee < ONE, "Invalid fee level");
             assert!(config.decay_factor >= ZERO && config.decay_factor < ONE, "Invalid decay factor");
 
