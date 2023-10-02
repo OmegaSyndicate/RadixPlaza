@@ -27,7 +27,7 @@ pub fn calc_target_ratio(p0: Decimal, actual: Decimal, surplus: Decimal, k: Deci
     assert!(p0 > ZERO, "Invalid p0");
     assert!(actual > ZERO, "Invalid actual reserves");
     assert!(surplus >= ZERO, "Invalid surplus amount");
-    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
+    assert!(k >= MIN_K_IN, "Invalid k");
 
     let radicand = ONE + FOUR * k * surplus / p0 / actual;
     let num = TWO * k - ONE + radicand.checked_sqrt().unwrap();
@@ -56,7 +56,7 @@ pub fn calc_target_ratio(p0: Decimal, actual: Decimal, surplus: Decimal, k: Deci
 pub fn calc_spot(p0: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
     assert!(p0 > ZERO, "Invalid p0");
     assert!(target_ratio >= ONE, "Invalid target ratio");
-    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
+    assert!(k >= MIN_K_IN, "Invalid k");
 
     let ratio2 = target_ratio * target_ratio;
     (ONE + k * (ratio2 - ONE)) * p0
@@ -87,7 +87,7 @@ pub fn calc_spot(p0: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
 pub fn calc_p0_from_spot(p_spot: Decimal, target_ratio: Decimal, k: Decimal) -> Decimal {
     assert!(p_spot > ZERO, "Invalid p_spot");
     assert!(target_ratio >= ONE, "Invalid target ratio");
-    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
+    assert!(k >= MIN_K_IN, "Invalid k");
 
     let ratio2 = target_ratio * target_ratio;
     p_spot / (ONE + k * (ratio2 - ONE))
@@ -118,7 +118,7 @@ pub fn calc_p0_from_curve(shortfall: Decimal, surplus: Decimal, target_ratio: De
     assert!(shortfall > ZERO, "Invalid shortfall");
     assert!(surplus > ZERO, "Invalid surplus");
     assert!(target_ratio >= ONE, "Invalid target ratio");
-    assert!(k >= MIN_K_IN && k <= ONE, "Invalid k");
+    assert!(k >= MIN_K_IN, "Invalid k");
 
     // Calculate the price at equilibrium (p0) using the given formula
     surplus / shortfall / (ONE + k * (target_ratio - ONE))
@@ -160,7 +160,7 @@ pub fn calc_incoming(
     assert!(target > actual, "Invalid target reserves");
     assert!(actual > ZERO, "Invalid actual reserves");
     assert!(p0 > ZERO, "Invalid reference price");
-    assert!(k_in >= MIN_K_IN && k_in <= ONE, "Invalid k_in");
+    assert!(k_in >= MIN_K_IN, "Invalid k_in");
     assert!(actual + input_amount <= target, "Infeasible combination");
 
     // Calculate the expected surplus values
@@ -183,8 +183,8 @@ pub fn calc_incoming(
 /// * `p_ref`: The reference price (price at equilibrium).
 /// * `k_out`: The liquidity concentration parameter. This value should be a Decimal in the range MIN_K_IN to ONE
 ///    inclusively, otherwise, the function will panic. Lower values of k represent higher concentration. Note that
-///    there are numeric issues close to ONE, so this value is restricted to either below 0.999 or exactly ONE in the
-///    pair constructor.
+///    there are numeric issues close to ONE, so this value is restricted to either below 0.999, exactly ONE or
+///    larger than 1.001 in the pair constructor.
 /// 
 /// Returns: A Decimal representing the computed output.
 /// 
@@ -209,7 +209,7 @@ pub fn calc_outgoing(
     assert!(target >= actual, "Invalid target reserves");
     assert!(actual > ZERO, "Invalid actual reserves");
     assert!(p_ref > ZERO, "Invalid reference price");
-    assert!(k_out >= MIN_K_IN && k_out <= ONE, "Invalid k_in");
+    assert!(k_out >= MIN_K_IN, "Invalid k_in");
 
     // Calculate current shortfall of tokens
     let shortfall = target - actual;
