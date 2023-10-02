@@ -154,13 +154,13 @@ mod plazadex {
                 .unwrap_or(Some("XXXXX".to_owned())).unwrap_or("XXXXX".to_owned());
             let base_name = format!("Defiplaza {} Base", symbol);
             let quote_name = format!("Defiplaza {} Quote", symbol);
-            let base_icon = format!(
+            let base_icon = Url::of(format!(
                 "https://assets.defiplaza.net/lptokens/{}_base.png",
-                Runtime::bech32_encode_address(base_manager.address())
+                Runtime::bech32_encode_address(base_manager.address()))
             );
-            let quote_icon = format!(
+            let quote_icon = Url::of(format!(
                 "https://assets.defiplaza.net/lptokens/{}_quote.png",
-                Runtime::bech32_encode_address(base_manager.address())
+                Runtime::bech32_encode_address(base_manager.address()))
             );
 
             // Assign metadata
