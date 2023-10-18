@@ -3,3 +3,4 @@
 todo.txt
 .DS_Store
 *.csv
+__pycache__
