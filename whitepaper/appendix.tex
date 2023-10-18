@@ -68,3 +68,8 @@ Note that $k{in}$ and $k_{out}$ are design parameters. They represent the amount
 \subsection{Liquidity Add}
 
 \subsection{Liquidity Remove}
+Removing liquidity from a token within a pair is comparatively simple. There are two cases:
+\begin{itemize}
+	\item Token is not in shortage: If the token that is withdrawn from the exchange is not in shortage, we can simply calculate the fraction of tokens that corresponds to a given amount of LP tokens. Removing the liquidity is simply withdrawing this fraction and burning the LP tokens.
+	\item  
+\end{itemize}

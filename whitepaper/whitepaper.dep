@@ -49,11 +49,13 @@
   *{file}   {l3backend-pdftex.def}{2022-02-07 v3}
   *{file}   {umsa.fd}     {2013/01/14 v3.01}
   *{file}   {umsb.fd}     {2013/01/14 v3.01}
+  *{file}   {ts1phv.fd}   {2020/03/25 v1/phv.}
   *{-------}{Document-specific files:}{----}
   *{file}   {supp-pdf.mkii}{0000/00/00 v0.0}
   *{package}{epstopdf-base}{2020-01-24 v2.11}
   *{file}   {epstopdf-sys.cfg}{2010/07/13 v1.3}
   *{file}   {fc-english.def}{2016/01/12 v0.0}
-  *{file}   {Appendix}    {0000/00/00 v0.0}
-  *{file}   {flowchart.png}{Graphic v0.0}
+  *{file}   {figures/ETH_USD.pdf}{0000/00/00 v0.0}
+  *{file}   {figures/returns.pdf}{0000/00/00 v0.0}
+  *{file}   {whitepaper.bbl}{0000/00/00 v0.0}
 }

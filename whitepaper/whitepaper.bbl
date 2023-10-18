@@ -1,0 +1,87 @@
+\begin{thebibliography}{10}
+
+\bibitem{alex}
+Alex.
+\newblock I made a dune dashboard..
+\newblock \url{https://twitter.com/thiccythot_/status/1589022227437039616},
+  2022.
+
+\bibitem{dune}
+Alex.
+\newblock Uniswap v3 order flow toxicity (weth/usdc).
+\newblock \url{https://dune.com/thiccythot/uniswap-markouts}, 2022.
+
+\bibitem{bancorToken}
+{Eyal Hertzog, Guy Benartzi, Galia Benartzi}.
+\newblock Continuous liquidity and asynchronous price discovery for tokens
+  through their smart contracts;aka smart tokens.
+\newblock \url{https://whitepaper.io/document/52/bancor-whitepaper}, 2017.
+
+\bibitem{bancorWP}
+{Eyal Hertzog, Guy Benartzi, Galia Benartzi, Omri Ross}.
+\newblock Continuous liquidity for cryptographic tokens through their smart
+  contracts.
+\newblock
+  \url{https://storage.googleapis.com/website-bancor/2018/04/01ba8253-bancor_protocol_whitepaper_en.pdf},
+  2018.
+
+\bibitem{uniV1}
+{Hayden Adams}.
+\newblock Uniswap whitepaper.
+\newblock \url{https://hackmd.io/@HaydenAdams/HJ9jLsfTz}, 2018.
+
+\bibitem{uniV2}
+{Hayden Adams, Noah Zinsmeister, Dan Robinson}.
+\newblock Uniswap v2 core.
+\newblock \url{https://uniswap.org/whitepaper.pdf}, 2020.
+
+\bibitem{uniV3}
+{Hayden Adams, Noah Zinsmeister, Moody Salem, River Keefer, Dan Robinson}.
+\newblock Uniswap v3 core.
+\newblock \url{https://uniswap.org/whitepaper-v3.pdf}, 2021.
+
+\bibitem{defiplaza1}
+{Jazzer9F}.
+\newblock Defi plaza — a low cost dex for ethereum.
+\newblock
+  \url{https://jazzerradix.medium.com/defi-plaza-a-low-cost-dex-for-ethereum-45b10c1ea2a0},
+  2021.
+
+\bibitem{defiplaza2}
+{Jazzer9F}.
+\newblock Defiplaza: Making defi on ethereum affordable again.
+\newblock
+  \url{https://jazzerradix.medium.com/defiplaza-making-defi-on-ethereum-affordable-again-b533724a0885},
+  2021.
+
+\bibitem{bancorIL}
+Stefan Loesch, Nate Hindman, Mark~B Richardson, and Nicholas Welch.
+\newblock Impermanent loss in uniswap v3, 2021.
+
+\bibitem{balancer}
+Fernando Martinelli and Nikolai Mushegian.
+\newblock Balancer whitepaper, 2019.
+
+\bibitem{curve}
+{Michael Egorov}.
+\newblock Stableswap - efficient mechanism for stablecoin liquidity.
+\newblock \url{https://curve.fi/files/stableswap-paper.pdf}, 2019.
+
+\bibitem{curveV2}
+{Michael Egorov}.
+\newblock Automatic market-making with dynamic peg.
+\newblock \url{https://classic.curve.fi/files/crypto-pools-paper.pdf}, 2021.
+
+\bibitem{data}
+Poloniex.
+\newblock Historic hourly trading data eth/usdt.
+\newblock \url{
+  https://www.cryptodatadownload.com/cdd/Poloniex_ETHUSDT_1h.csv}, 2023.
+
+\bibitem{dodo}
+DODO Team.
+\newblock Dodo - a next-generation on-chain liquidity provider powered by
+  pro-active market maker algorithm.
+\newblock \url{https://whitepaper.io/document/715/dodo-whitepaper}, 2021.
+
+\end{thebibliography}
