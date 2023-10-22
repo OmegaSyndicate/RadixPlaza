@@ -197,19 +197,16 @@ class BackTester():
 
 
 if __name__ == "__main__":
-    INITIAL_BASE = 11.916
-    INITIAL_QUOTE = 1
-    START_TIME = 0
+    INITIAL_BASE = 3.87
+    INITIAL_QUOTE = 500
+    START_TIME = 1577833200
 
-    os.chdir('whitepaper/data')
-    df = pd.read_csv('ETHBTC_1h.csv', skiprows=1).dropna().sort_values(by='unix')
-    df['unix'] = df['unix'].astype('int')
+    os.chdir('whitepaper/figures')
+    df = pd.read_csv('ETHUSDT_1h.csv', skiprows=1).dropna().sort_values(by='unix')
+    df['unix'] = df['unix'].astype('int') / 1000
     df = df[df['unix'] >= START_TIME]
 
-    k_in = 1
-    k_out = 1
-    config = Config(k_in, k_out, 0.01, 0.999)                           
-
+    config = Config(4.74957491, 474.957491, 0.1, 0.9998519972)
     initial_state = ExchangeState(
         INITIAL_BASE, INITIAL_QUOTE, INITIAL_BASE, INITIAL_QUOTE, df.loc[df.index[0], 'close'],
         df.loc[df.index[0], 'close'], df.loc[df.index[0], 'unix'], Shortage.BaseShortage
@@ -240,7 +237,7 @@ if __name__ == "__main__":
     ax.grid(True, which='major')
     ax.legend()
     ax.set_xlim([df['date'].iloc[0], df['date'].iloc[-1]])
-    ax.set_ylim([0, 2.5])
+    ax.set_ylim([0, 22500])
     bold_spines()
-    plt.savefig('eth_btc.pdf')
+    plt.savefig('eth_usdt.pdf')
     plt.close()
