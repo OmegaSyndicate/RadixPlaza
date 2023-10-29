@@ -28,6 +28,6 @@ pub fn deposit_to_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, 
 pub fn withdraw_from_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucket, amount: Decimal) {
     let address = bucket.resource_address();
     if amount > ZERO {
-        bucket.put(pool.protected_withdraw(address, amount, WithdrawStrategy::Exact));
+        bucket.put(pool.protected_withdraw(address, amount, WithdrawStrategy::Rounded(RoundingMode::ToZero)));
     }
 }

@@ -28,8 +28,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.000001"), &mut env)?,
-        quote_bucket.take(dec!("0.000001"), &mut env)?,
+        base_bucket.take(dec!("0.0001"), &mut env)?,
+        quote_bucket.take(dec!("0.0001"), &mut env)?,
         config,
         dec!(1),
         package,
@@ -69,16 +69,8 @@ fn second_add_goes_in_ratio() -> Result<(), RuntimeError> {
         let _ = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
         let add_base = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         let add_quote = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
-        assert!(add_base.amount(&mut env)?
-            .checked_round(
-                8,
-                RoundingMode::ToNearestMidpointAwayFromZero
-            ).unwrap() == dec!(10), "Unexpected LP amount");
-        assert!(add_quote.amount(&mut env)?
-            .checked_round(
-                8,
-                RoundingMode::ToNearestMidpointAwayFromZero
-            ).unwrap() == dec!(10), "Unexpected LP amount");
+        assert!(add_base.amount(&mut env)? == dec!(10), "Unexpected LP amount: {}", add_base.amount(&mut env)?);
+        assert!(add_quote.amount(&mut env)? == dec!(10), "Unexpected LP amount: {}", add_quote.amount(&mut env)?);
         Ok(())
     })
 }

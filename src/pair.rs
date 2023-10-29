@@ -101,8 +101,8 @@ mod plazapair {
             let quote_address = quote_bucket.resource_address();
             let base_manager = ResourceManager::from(base_address);
             let quote_manager = ResourceManager::from(quote_address);
-            assert!(base_manager.resource_type().divisibility().unwrap() == 18, "Bad base divisibility");
-            assert!(quote_manager.resource_type().divisibility().unwrap() == 18, "Bad quote divisibility");
+            assert!(base_manager.resource_type().divisibility().unwrap() >= 6, "Bad base divisibility");
+            assert!(quote_manager.resource_type().divisibility().unwrap() >= 6, "Bad quote divisibility");
 
             // Create pool for base liquidity providers
             let base_pool = Blueprint::<TwoResourcePool>::instantiate(
@@ -198,6 +198,8 @@ mod plazapair {
             let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
             let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
             let min_liq_addr = min_liq.resource_address();
+            let min_liq_mgr = ResourceManager::from(min_liq_addr);
+            let min_liq_div = min_liq_mgr.resource_type().divisibility().unwrap();
             let mut tiny_bucket = min_liq.take(MIN_LIQUIDITY);
 
             let lp_bucket = match (reserve == ZERO, in_shortage) {
@@ -214,16 +216,16 @@ mod plazapair {
                     let input_address = input_bucket.resource_address();
                     let (mut lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
 
-                    // Beef up amount of LP tokens by a factor of 1000 for non-technical reasons
+                    // Beef up amount of LP tokens by a factor of 100 for non-technical reasons
                     let scale_bucket_input = pool.protected_withdraw(
                         input_address,
-                        input_amount * (ONE_THOUSAND - ONE) / ONE_THOUSAND,
-                        WithdrawStrategy::Exact
+                        input_amount * (ONE_HUNDRED - ONE) / ONE_HUNDRED,
+                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
                     );
                     let scale_bucket_minliq = pool.protected_withdraw(
                         min_liq_addr,
-                        MIN_LIQUIDITY * (ONE_THOUSAND - ONE) / ONE_THOUSAND,
-                        WithdrawStrategy::Exact
+                        MIN_LIQUIDITY * (ONE_HUNDRED - ONE) / ONE_HUNDRED,
+                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
                     );
                     let (scale_lp, remainder) = pool.contribute((scale_bucket_input, scale_bucket_minliq));
                     if let Some(bucket) = remainder {
@@ -242,10 +244,13 @@ mod plazapair {
                 // Not in shortage, can just add in ratio
                 (false, false) => {
                     pool.protected_deposit(
-                        tiny_bucket.take(reserve / (reserve + input_amount) / TWO * tiny_bucket.amount())
+                        tiny_bucket.take(FEMTO.checked_round(min_liq_div, RoundingMode::AwayFromZero).unwrap())
                     );
                     let (lp_tokens, remainder) = pool.contribute((input_bucket, tiny_bucket));
-                    pool.protected_deposit(remainder.expect("Remainder not found??"));
+                    if let Some(bucket) = remainder {
+                        assert!(bucket.resource_address() == min_liq_addr, "Added too many tokens");
+                        pool.protected_deposit(bucket);
+                    }
                     min_liq.put(
                         pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
                     );
@@ -284,7 +289,7 @@ mod plazapair {
                     let other_bucket = pool.protected_withdraw(
                         surplus_address,
                         new_lp_fraction * surplus,
-                        WithdrawStrategy::Exact
+                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
                     );
 
                     // Finally add the liquidity and add back the remainder

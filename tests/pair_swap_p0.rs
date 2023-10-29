@@ -28,8 +28,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.000001"), &mut env)?,
-        quote_bucket.take(dec!("0.000001"), &mut env)?,
+        base_bucket.take(dec!("0.0001"), &mut env)?,
+        quote_bucket.take(dec!("0.0001"), &mut env)?,
         config,
         dec!(2),            // <--- Set a price different than 1
         package,

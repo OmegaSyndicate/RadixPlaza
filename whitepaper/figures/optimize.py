@@ -8,16 +8,16 @@ from historic import BackTester, ExchangeState, Config, Shortage, bold_spines
 
 
 if __name__ == "__main__":
-    INITIAL_BASE = 62.03
-    INITIAL_QUOTE = 500
+    INITIAL_BASE = 500/8.06
+    INITIAL_QUOTE = 500/998.05
     START_TIME = 1483225200
     END_TIME = 1577833200
 
     os.chdir('whitepaper/figures')
-    df = pd.read_csv('ETHUSDT_1h.csv', skiprows=1).dropna().sort_values(by='unix')
-    df['unix'] = df['unix'].astype('int') / 1000
+    df = pd.read_csv('ETHBTC_1h.csv', skiprows=1).dropna().sort_values(by='unix')
+    df['unix'] = df['unix'].astype('int')
     df = df[df['unix'] >= START_TIME]
-    df = df[df['unix'] <= END_TIME]
+    #df = df[df['unix'] <= END_TIME]
 
     prev_len = 0
     while (prev_len != len(df)):
@@ -34,8 +34,8 @@ if __name__ == "__main__":
     tester = BackTester(config, initial_state)
 
     def final_value(x, data):
-        k_in, dilution, fee, decay = x
-        test_config = Config(k_in, k_in * 10**dilution, 10**(fee), 1-10**(-decay))
+        k_in, dilution, decay = x
+        test_config = Config(k_in, k_in * 10**dilution, 0.01, 1-10**(-decay))
         tester.set_config(test_config)
         tester.reset()
         
@@ -45,7 +45,7 @@ if __name__ == "__main__":
         print(f'tried x = {x}, value = {value}')
         return -value
     
-    result = minimize(final_value, [0.5, 1, -3, 2], (df), bounds=[(0.05,1), (0, 2), (-3, -2), (1, 4)])
+    result = minimize(final_value, [0.7, 0.6, 3], (df), bounds=[(0.05,2), (0, 2), (1, 4)])
     print(result.x)
 
     # df['HODL'] = INITIAL_QUOTE + INITIAL_BASE * df['close']
