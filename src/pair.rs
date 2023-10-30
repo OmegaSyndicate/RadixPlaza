@@ -88,6 +88,7 @@ mod plazapair {
             assert!(config.k_out < CLIP_K_OUT_1 || config.k_out == ONE || config.k_out > CLIP_K_OUT_2, "Invalid k_out value");
             assert!(config.fee >= ZERO && config.fee < ONE, "Invalid fee level");
             assert!(config.decay_factor >= ZERO && config.decay_factor < ONE, "Invalid decay factor");
+            assert!(initial_price > ZERO, "Invalid price");
 
             // Reserve address for Actor Virtual Badge
             let (address_reservation, component_address) =
