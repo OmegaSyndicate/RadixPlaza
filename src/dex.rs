@@ -488,11 +488,16 @@ mod plazadex {
         /// # Emits
         ///
         /// * Emits a 'PairRelisted' event if the pair is succesfully relisted.
-        pub fn relist(&mut self, token: ResourceAddress, pair: Global<PlazaPair>) {
+        pub fn relist(&mut self, pair: Global<PlazaPair>) {
             assert!(self.pair_to_lps.get(&pair).is_some(), "Pair was never listed");
+
+            let token = ResourceAddress::try_from(
+                pair.get_metadata::<&str, Vec<GlobalAddress>>("pool_resources")
+                .unwrap().unwrap()[0]
+            ).unwrap();
             assert!(!self.blacklist.contains(&token), "Token is blacklisted");
             assert!(self.address_to_pair.get(&token).is_none(), "Token is already listed");
-
+    
             self.address_to_pair.insert(token, pair); 
             Runtime::emit_event(PairRelisted{token, pair});
         }
