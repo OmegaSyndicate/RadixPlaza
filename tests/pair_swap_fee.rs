@@ -56,12 +56,14 @@ fn applies_fee_correctly() -> Result<(), RuntimeError> {
         let output_amount = output.amount(&mut env)?;
         assert!(output_amount == dec!(495), "Incorrect output amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>

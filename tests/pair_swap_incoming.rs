@@ -56,12 +56,14 @@ fn setup_correct_quote_shortage() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -86,12 +88,14 @@ fn setup_correct_base_shortage() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -125,12 +129,14 @@ fn gives_correct_spot_price_quote_shortage() -> Result<(), RuntimeError> {
 
         assert!(output_base_amount == 13 * input_quote_amount, "Incorrect spot price");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -165,12 +171,14 @@ fn gives_correct_spot_price_base_shortage() -> Result<(), RuntimeError> {
 
         assert!(output_base_amount == 13 * input_quote_amount, "Incorrect spot price");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -197,16 +205,18 @@ fn trades_correct_amount_quote_shortage() -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
         let (output, _) = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
  
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
-        env.read_component_state::<(
-            PairConfig,
-            PairState,
-            ResourceAddress,
-            ResourceAddress,
-            ComponentAddress,
-            ComponentAddress,
-            HashMap<ComponentAddress, Vault>
-        ), _>(*pair).expect("Error reading state");
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+            env.read_component_state::<(
+                PairConfig,
+                PairState,
+                ResourceAddress,
+                ResourceAddress,
+                u8,
+                u8,
+                ComponentAddress,
+                ComponentAddress,
+                HashMap<ComponentAddress, Vault>
+            ), _>(*pair).expect("Error reading state");
 
         assert!(output.amount(&mut env)? == dec!(3000), "Incorrect trade sizing");
         assert!(state.p0 == dec!(1), "Reference price shouldn't have changed");
@@ -229,16 +239,18 @@ fn trades_correct_amount_base_shortage() -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;        
         let (output, _) = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
-        env.read_component_state::<(
-            PairConfig,
-            PairState,
-            ResourceAddress,
-            ResourceAddress,
-            ComponentAddress,
-            ComponentAddress,
-            HashMap<ComponentAddress, Vault>
-        ), _>(*pair).expect("Error reading state");
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+            env.read_component_state::<(
+                PairConfig,
+                PairState,
+                ResourceAddress,
+                ResourceAddress,
+                u8,
+                u8,
+                ComponentAddress,
+                ComponentAddress,
+                HashMap<ComponentAddress, Vault>
+            ), _>(*pair).expect("Error reading state");
 
         assert!(output.amount(&mut env)? == dec!(3000), "Incorrect trade sizing");
         assert!(state.p0 == dec!(1), "Reference price shouldn't have changed");
@@ -263,16 +275,18 @@ fn trades_correct_amount_accross_eq_from_quote_shortage() -> Result<(), RuntimeE
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");
  
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
-        env.read_component_state::<(
-            PairConfig,
-            PairState,
-            ResourceAddress,
-            ResourceAddress,
-            ComponentAddress,
-            ComponentAddress,
-            HashMap<ComponentAddress, Vault>
-        ), _>(*pair).expect("Error reading state");
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+            env.read_component_state::<(
+                PairConfig,
+                PairState,
+                ResourceAddress,
+                ResourceAddress,
+                u8,
+                u8,
+                ComponentAddress,
+                ComponentAddress,
+                HashMap<ComponentAddress, Vault>
+            ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't have changed");
         assert!(state.shortage == Shortage::BaseShortage, "Incorrect shortage detected");
@@ -296,16 +310,18 @@ fn trades_correct_amount_accross_eq_from_base_shortage() -> Result<(), RuntimeEr
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");
  
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
-        env.read_component_state::<(
-            PairConfig,
-            PairState,
-            ResourceAddress,
-            ResourceAddress,
-            ComponentAddress,
-            ComponentAddress,
-            HashMap<ComponentAddress, Vault>
-        ), _>(*pair).expect("Error reading state");
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+            env.read_component_state::<(
+                PairConfig,
+                PairState,
+                ResourceAddress,
+                ResourceAddress,
+                u8,
+                u8,
+                ComponentAddress,
+                ComponentAddress,
+                HashMap<ComponentAddress, Vault>
+            ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't have changed");
         assert!(state.shortage == Shortage::QuoteShortage, "Incorrect shortage detected");

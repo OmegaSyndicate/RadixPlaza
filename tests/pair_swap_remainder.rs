@@ -57,12 +57,14 @@ fn gracefully_swaps_from_eq_when_base_is_empty() -> Result<(), RuntimeError> {
         assert!(output_amount == dec!(0), "Shouldn't give any output!");
         assert!(remainder_amount == dec!(1000), "All tokens should be returned");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -93,12 +95,14 @@ fn gracefully_swaps_from_eq_when_quote_is_empty() -> Result<(), RuntimeError> {
         assert!(output_amount == dec!(0), "Shouldn't give any output!");
         assert!(remainder_amount == dec!(1000), "All tokens should be returned");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -131,12 +135,14 @@ fn gracefully_swaps_from_quote_shortage_when_base_is_empty() -> Result<(), Runti
         assert!(output_amount == dec!(1000), "Incorrect output amount");
         assert!(remainder_amount == dec!(500), "Unspent tokens should be returned");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -169,12 +175,14 @@ fn gracefully_swaps_from_base_shortage_when_quote_is_empty() -> Result<(), Runti
         assert!(output_amount == dec!(1000), "Incorrect output amount");
         assert!(remainder_amount == dec!(500), "Unspent tokens should be returned");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>

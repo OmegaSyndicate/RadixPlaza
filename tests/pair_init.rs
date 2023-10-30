@@ -49,12 +49,14 @@ fn deploys_healthy() -> Result<(), RuntimeError> {
             &mut env,
         )?;
 
-        let (config, state, base_address, quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (config, state, base_address, quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>

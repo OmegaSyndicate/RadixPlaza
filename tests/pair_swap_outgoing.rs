@@ -54,12 +54,14 @@ fn swaps_base_to_quote() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -84,12 +86,14 @@ fn swaps_quote_to_base() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>

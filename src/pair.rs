@@ -38,6 +38,10 @@ mod plazapair {
         base_address: ResourceAddress,
         /// ResourceAddress for the quote token in the pair.
         quote_address: ResourceAddress,
+        /// Divisibility of the base token.  
+        base_divisibility: u8,
+        /// Divisibility of the quote token.
+        quote_divisibility: u8,
         /// Represents a pool that primarily holds base tokens plus potentially some quote tokens held in their place.  
         base_pool: Global<TwoResourcePool>,
         /// Represents a pool that primarily holds quote tokens plus potentially some base tokens held in their place.  
@@ -102,8 +106,10 @@ mod plazapair {
             let quote_address = quote_bucket.resource_address();
             let base_manager = ResourceManager::from(base_address);
             let quote_manager = ResourceManager::from(quote_address);
-            assert!(base_manager.resource_type().divisibility().unwrap() >= 6, "Bad base divisibility");
-            assert!(quote_manager.resource_type().divisibility().unwrap() >= 6, "Bad quote divisibility");
+            let base_divisibility = base_manager.resource_type().divisibility().unwrap();
+            let quote_divisibility = quote_manager.resource_type().divisibility().unwrap();
+            assert!(base_divisibility >= 6, "Bad base divisibility");
+            assert!(quote_divisibility >= 6, "Bad quote divisibility");
 
             // Create pool for base liquidity providers
             let base_pool = Blueprint::<TwoResourcePool>::instantiate(
@@ -142,6 +148,8 @@ mod plazapair {
                 },
                 base_address: base_address,
                 quote_address: quote_address,
+                base_divisibility: base_divisibility,
+                quote_divisibility: quote_divisibility,
                 base_pool: base_pool,
                 quote_pool: quote_pool,
                 min_liquidity: pool_map,
@@ -579,12 +587,28 @@ mod plazapair {
             // Allocate pool changes
             match input_is_quote {
                 true => {
-                    quote_base = output_amount;
-                    quote_quote = amount_traded;
+                    quote_base = output_amount.checked_round(
+                        self.base_divisibility,
+                        RoundingMode::ToZero
+                    ).unwrap();
+                    quote_quote = amount_traded.checked_round(
+                        self.quote_divisibility,
+                        RoundingMode::AwayFromZero
+                    ).unwrap();
+                    output_amount = quote_base;
+                    amount_traded = quote_quote;
                 },
                 false => {
-                    base_base = amount_traded;
-                    base_quote = output_amount;
+                    base_base = amount_traded.checked_round(
+                        self.base_divisibility,
+                        RoundingMode::AwayFromZero
+                    ).unwrap();
+                    base_quote = output_amount.checked_round(
+                        self.quote_divisibility,
+                        RoundingMode::ToZero
+                    ).unwrap();
+                    amount_traded = base_base;
+                    output_amount = base_quote;
                 }
             };
 
@@ -615,12 +639,18 @@ mod plazapair {
                 let new_actual = actual - outgoing_amount;
                 match input_is_quote {
                     true => {
-                        base_base = outgoing_amount;
+                        base_base = outgoing_amount.checked_round(
+                            self.base_divisibility,
+                            RoundingMode::ToZero
+                        ).unwrap();
                         base_quote = input_amount - amount_traded;
                     },
                     false => {
                         quote_base = input_amount - amount_traded;
-                        quote_quote = outgoing_amount;
+                        quote_quote = outgoing_amount.checked_round(
+                            self.quote_divisibility,
+                            RoundingMode::ToZero
+                        ).unwrap();
                     }
                 };
                 amount_traded = input_amount;
@@ -651,7 +681,12 @@ mod plazapair {
             }
 
             // Calculate output variables
-            let fee = self.config.fee * output_amount;
+            let fee_divisibility = if input_is_quote { self.base_divisibility } else { self.quote_divisibility };
+            let fee = (self.config.fee * output_amount)
+                .checked_round(
+                    fee_divisibility,
+                    RoundingMode::AwayFromZero
+                ).unwrap();
             let remainder = input_amount - amount_traded;
             let allocation = TradeAllocation{base_base, base_quote, quote_base, quote_quote};
 

@@ -62,12 +62,14 @@ fn removes_part_of_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> 
         assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -100,12 +102,14 @@ fn removes_all_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(10000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -139,12 +143,14 @@ fn removes_part_of_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError
         assert!(primary2.amount(&mut env)? == dec!(2500), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(5000), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -179,12 +185,14 @@ fn removes_part_of_liquidity_when_in_base_shortage() -> Result<(), RuntimeError>
         assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -218,12 +226,14 @@ fn removes_all_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(10000), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -258,12 +268,14 @@ fn removes_all_liquidity_when_in_base_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(10000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -292,12 +304,14 @@ fn swaps_properly_after_emptied_in_quote_shortage() -> Result<(), RuntimeError> 
         let (_primary2, _secondary2) = pair.remove_liquidity(quote_lp, true, &mut env)?;
         let (_output, _remainder) = pair.swap(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
@@ -326,12 +340,14 @@ fn swaps_properly_after_emptied_in_base_shortage() -> Result<(), RuntimeError> {
         let (_primary1, _secondary1) = pair.remove_liquidity(base_lp, false, &mut env)?;
         let (_output, _remainder) = pair.swap(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
                 ResourceAddress,
                 ResourceAddress,
+                u8,
+                u8,
                 ComponentAddress,
                 ComponentAddress,
                 HashMap<ComponentAddress, Vault>
