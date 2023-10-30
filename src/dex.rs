@@ -5,7 +5,7 @@ use crate::types::PairConfig;
 use crate::pair::plazapair::PlazaPair;
 
 #[blueprint]
-#[events(PairCreated, TokenDeListed, TokenBlacklisted, TokenDeBlacklisted)]
+#[events(PairCreated, TokenDeListed, TokenBlacklisted, TokenDeBlacklisted, PairRelisted)]
 mod plazadex {
     enable_method_auth! { 
         methods { 
@@ -18,6 +18,7 @@ mod plazadex {
             delist => restrict_to: [OWNER];
             blacklist => restrict_to: [OWNER];
             deblacklist => restrict_to: [OWNER];
+            relist => restrict_to: [OWNER];
             update_lp_metadata => restrict_to: [OWNER];
             withdraw_owned_liquidity => restrict_to: [OWNER];
             set_min_dfp2 => restrict_to: [OWNER];
@@ -41,8 +42,8 @@ mod plazadex {
         dfp2: ResourceAddress,
         blacklist: HashSet<ResourceAddress>,
         address_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>,
-        pair_to_lps: KeyValueStore<ComponentAddress, (ResourceAddress, ResourceAddress)>,
-        dex_reserves: KeyValueStore<ComponentAddress, (Vault, Vault)>,
+        pair_to_lps: KeyValueStore<Global<PlazaPair>, (ResourceAddress, ResourceAddress)>,
+        dex_reserves: KeyValueStore<Global<PlazaPair>, (Vault, Vault)>,
         min_dfp2_liquidity: Decimal,
         pairs_owner: OwnerRole,
     }
@@ -177,13 +178,13 @@ mod plazadex {
             let pair_address = pair.address();
             let base_lp_vault = Vault::with_bucket(base_lp_bucket);
             let dfp2_lp_vault = Vault::with_bucket(dfp2_lp_bucket);
-            self.dex_reserves.insert(pair_address, (base_lp_vault, dfp2_lp_vault));
+            self.dex_reserves.insert(pair_address.into(), (base_lp_vault, dfp2_lp_vault));
 
             // Add new pair to database
             self.address_to_pair.insert(token, pair);
             self.address_to_pair.insert(base_lp_address, pair);
             self.address_to_pair.insert(dfp2_lp_address, pair);
-            self.pair_to_lps.insert(pair_address, (base_lp_address, dfp2_lp_address));
+            self.pair_to_lps.insert(pair_address.into(), (base_lp_address, dfp2_lp_address));
 
             // Emit pair creation event
             Runtime::emit_event(PairCreated{base_token: token, config, p0, component: pair});
@@ -309,7 +310,7 @@ mod plazadex {
             // Select liquidity pair from database
             let lp_address = lp_tokens.resource_address();
             let pair = self.address_to_pair.get_mut(&lp_address).expect("Unknown LP token");
-            let is_quote = lp_tokens.resource_address() == self.pair_to_lps.get(&pair.address()).expect("Pair not found").1;
+            let is_quote = lp_tokens.resource_address() == self.pair_to_lps.get(&pair).expect("Pair not found").1;
 
             // Remove liquidity from pair and return to caller
             pair.remove_liquidity(lp_tokens, is_quote)
@@ -383,7 +384,7 @@ mod plazadex {
         ///   is not found in the lp token key-value store.
         pub fn get_lp_tokens(&self, base_token: ResourceAddress) -> (ResourceAddress, ResourceAddress) {
             let pair = self.address_to_pair.get(&base_token).expect("Token not listed");
-            *self.pair_to_lps.get(&pair.address()).expect("Pair not found")
+            *self.pair_to_lps.get(&pair).expect("Pair not found")
         }
 
         /// The `delist` function removes a listed token pair from the database, thereby preventing the DEX from
@@ -467,6 +468,35 @@ mod plazadex {
             Runtime::emit_event(TokenDeBlacklisted{token});
         }
 
+        /// Re-establishes a global token pair in the trading registry. 
+        ///
+        /// The function first authenticates that the pair was previously listed by checking it in 'pair_to_lps'.
+        /// It validates that the associated token is not in the blacklist or in the 'address_to_pair' mapping.
+        /// Upon successful checks, 'relist' function adds the token-pair mapping back into the 'address_to_pair'.
+        ///
+        /// # Arguments
+        ///
+        /// * `pair` - Global token pair that is to be re-listed.
+        ///
+        /// # Panics
+        ///
+        /// Function will panic if:
+        /// - The 'pair' was never listed in 'pair_to_lps'
+        /// - The associated token is in the blacklist
+        /// - The token is already listed in the 'address_to_pair' mapping
+        ///
+        /// # Emits
+        ///
+        /// * Emits a 'PairRelisted' event if the pair is succesfully relisted.
+        pub fn relist(&mut self, token: ResourceAddress, pair: Global<PlazaPair>) {
+            assert!(self.pair_to_lps.get(&pair).is_some(), "Pair was never listed");
+            assert!(!self.blacklist.contains(&token), "Token is blacklisted");
+            assert!(self.address_to_pair.get(&token).is_none(), "Token is already listed");
+
+            self.address_to_pair.insert(token, pair); 
+            Runtime::emit_event(PairRelisted{token, pair});
+        }
+
         /// This function allows the DEX owner to update the Liquidity Pool (LP) token metadata.
         /// The `update_lp_metadata` function accesses the LP tokens corresponding to the provided PlazaPair at hand
         /// using its address. It then involves updating the associated metadata of the tokens with the provided
@@ -483,7 +513,7 @@ mod plazadex {
         /// This function will panic if the address of the provided PlazaPair does not exist within the stored pool
         /// of LP tokens.
         pub fn update_lp_metadata(&mut self, pair: Global<PlazaPair>, key: String, value: String) {
-            let lp_tokens = self.pair_to_lps.get(&pair.address()).expect("Unknown pair");
+            let lp_tokens = self.pair_to_lps.get(&pair).expect("Unknown pair");
             ResourceManager::from(lp_tokens.0).set_metadata(&key, value.to_owned());
             ResourceManager::from(lp_tokens.1).set_metadata(&key, value);
         }
@@ -505,7 +535,7 @@ mod plazadex {
         ///
         /// The function will panic if it cannot locate the given pair's address inside the `dex_reserves` hash map.
         pub fn withdraw_owned_liquidity(&mut self, pair: Global<PlazaPair>) -> (Bucket, Bucket) {
-            let mut vaults = self.dex_reserves.get_mut(&pair.address()).expect("Unknown pair");
+            let mut vaults = self.dex_reserves.get_mut(&pair).expect("Unknown pair");
             (vaults.0.take_all(), vaults.1.take_all())
         }
 

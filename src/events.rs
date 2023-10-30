@@ -46,3 +46,9 @@ pub struct TokenBlacklisted {
 pub struct TokenDeBlacklisted {
     pub token: ResourceAddress,
 }
+
+#[derive(ScryptoSbor, ScryptoEvent)]
+pub struct PairRelisted {
+    pub token: ResourceAddress,
+    pub pair: Global<PlazaPair>,
+}
