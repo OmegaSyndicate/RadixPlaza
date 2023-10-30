@@ -2,6 +2,7 @@ use scrypto::prelude::*;
 use scrypto::types::RoyaltyAmount::Usd;
 
 pub const ZERO: Decimal = Decimal::zero();                          // zero
+pub const ONE_TENTH: Decimal = dec!(0.1);                           // 10^-1
 pub const ONE: Decimal = Decimal::one();                            // one
 pub const TWO: Decimal = dec!(2);                                   // two
 pub const FOUR: Decimal = dec!(4);                                  // four
