@@ -633,7 +633,6 @@ mod plazapair {
                     virtual_p_ref,
                     self.config.k_out,
                 );
-                output_amount += outgoing_amount;
 
                 // Calculate new values and allocate pool changes
                 let new_actual = actual - outgoing_amount;
@@ -644,6 +643,7 @@ mod plazapair {
                             RoundingMode::ToZero
                         ).unwrap();
                         base_quote = input_amount - amount_traded;
+                        output_amount += base_base;
                     },
                     false => {
                         quote_base = input_amount - amount_traded;
@@ -651,6 +651,7 @@ mod plazapair {
                             self.quote_divisibility,
                             RoundingMode::ToZero
                         ).unwrap();
+                        output_amount += quote_quote;
                     }
                 };
                 amount_traded = input_amount;
