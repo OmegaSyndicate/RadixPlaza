@@ -187,7 +187,7 @@ mod plazapair {
         /// * An `AddLiquidityEvent` is emitted after the liquidity has been successfully added to the pool.
         pub fn add_liquidity(
             &mut self,
-            input_bucket: Bucket,
+            mut input_bucket: Bucket,
         ) -> Bucket {
             let is_quote = input_bucket.resource_address() == self.quote_address;
 
@@ -203,6 +203,7 @@ mod plazapair {
                 }
             };
 
+            let fee_bucket = input_bucket.take(self.config.fee * input_bucket.amount());
             let input_amount = input_bucket.amount();
             let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
             let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
@@ -312,6 +313,9 @@ mod plazapair {
                     lp_tokens
                 }
             };
+
+            // Deposit fee bucket
+            pool.protected_deposit(fee_bucket);
         
             // Emit add liquidity event
             let lp_amount = lp_bucket.amount();
