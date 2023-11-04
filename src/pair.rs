@@ -502,7 +502,6 @@ mod plazapair {
         /// # Panics
         /// The function will panic if:
         /// * The `input_amount` is zero or less.
-        /// * If the traded volume exceeds the `input_amount`.
         pub fn quote(
             &self,
             input_amount: Decimal,
