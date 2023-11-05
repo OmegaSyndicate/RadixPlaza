@@ -203,7 +203,10 @@ mod plazapair {
                 }
             };
 
-            let fee_bucket = input_bucket.take(self.config.fee * input_bucket.amount());
+            let fee_bucket = input_bucket.take_advanced(
+                self.config.fee * input_bucket.amount(),
+                WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
+            );
             let input_amount = input_bucket.amount();
             let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
             let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
@@ -300,6 +303,12 @@ mod plazapair {
                         surplus_address,
                         new_lp_fraction * surplus,
                         WithdrawStrategy::Rounded(RoundingMode::ToZero)
+                    );
+
+                    // Protect against numeric issues with too small liquidity
+                    assert!(
+                        other_bucket.amount() > dec!(0.9999) * new_lp_fraction * surplus,
+                        "Numeric issues for this add size"
                     );
 
                     // Finally add the liquidity and add back the remainder
