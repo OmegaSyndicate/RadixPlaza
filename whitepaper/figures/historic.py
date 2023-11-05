@@ -235,7 +235,9 @@ if __name__ == "__main__":
     ax.xaxis.set_major_locator(years) 
     ax.xaxis.set_major_formatter(years_fmt)
     ax.grid(True, which='major')
-    ax.legend()
+    legend = ax.legend()
+    for line in legend.get_lines():
+        line.set_linewidth(2.0)
     ax.set_xlim([df['date'].iloc[0], df['date'].iloc[-1]])
     ax.set_ylim([0, 22500])
     bold_spines()
