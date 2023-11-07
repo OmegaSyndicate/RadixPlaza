@@ -31,3 +31,32 @@ pub fn withdraw_from_pool(pool: &mut Global<TwoResourcePool>, bucket: &mut Bucke
         bucket.put(pool.protected_withdraw(address, amount, WithdrawStrategy::Rounded(RoundingMode::ToZero)));
     }
 }
+
+/// Function `assure_is_not_recallable` carries out a validation operation to ensure a token is not recallable. The 
+/// validation is dependent on the `token` not having the 'recaller' or 'recaller_updater' roles active.
+///
+/// Arguments:
+/// * `token`: The token of type `ResourceAddress` that needs its recallability status validated.
+///
+/// In the eventuality of either the 'recaller' or 'recaller_updater' role being activated for the token, the function
+/// triggers assertion errors, effectively preventing the validation of tokens that may be recallable.
+///
+/// This function does not return any value.
+pub fn assure_is_not_recallable(token: ResourceAddress) {
+    let manager = ResourceManager::from(token);
+    let token_recaller_rule = manager.get_role("recaller").unwrap();
+    let token_recaller_updater_rule = manager.get_role("recaller_updater").unwrap();
+    let target_rule = rule!(deny_all);
+
+    assert_eq!(
+        token_recaller_rule, 
+        target_rule,
+        "Cannot accept recallable tokens"
+    );
+
+    assert_eq!(
+        token_recaller_updater_rule, 
+        target_rule,
+        "Cannot accept potentially recallable tokens"
+    );
+}

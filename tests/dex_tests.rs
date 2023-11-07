@@ -2,6 +2,8 @@ use defiplaza::dex::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
+use scrypto::prelude::ToRoleEntry;
+use crate::node_modules::auth::RoleDefinition;
 //use scrypto::prelude::Url;
 
 
@@ -64,5 +66,81 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 fn deploys() -> Result<(), RuntimeError> {
     publish_and_setup(|mut _env, &mut _dex, _a_bucket, _b_bucket, _dfp2_bucket| -> Result<(), RuntimeError> {
         Ok(())
+    })
+}
+
+#[test]
+fn rejects_outright_recallable_tokens() -> Result<(), RuntimeError> {
+    publish_and_setup(|mut env, &mut mut dex, _a_bucket, _b_bucket, dfp2_bucket| -> Result<(), RuntimeError> {
+        let config = PairConfig {
+            k_in: dec!("1"),
+            k_out: dec!("2"),
+            fee: dec!("0.005"),
+            decay_factor: dec!("0.998"),
+        };
+
+        let c_bucket = ResourceBuilder::new_fungible(OwnerRole::None) 
+            .divisibility(18)
+            .recall_roles(recall_roles! {
+                recaller => rule!(require(dfp2_bucket.resource_address(&mut env)?));
+                recaller_updater => rule!(deny_all);
+            })
+            .mint_initial_supply(10000, &mut env)?;
+
+        let result = dex.create_pair( 
+            c_bucket.take(dec!(1000), &mut env)?,
+            dfp2_bucket.take(dec!(1000), &mut env)?,
+            config,
+            dec!(1),
+            &mut env,
+        );
+        match result {
+            Ok(_) => panic!("Should've thrown an error!"),
+            Err(e) => {
+                assert!(
+                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
+                        if pm.starts_with("assertion failed:")),
+                    "Actual error thrown: {:?}", e);
+                Ok(())
+            }
+        }
+    })
+}
+
+#[test]
+fn rejects_potentially_recallable_tokens() -> Result<(), RuntimeError> {
+    publish_and_setup(|mut env, &mut mut dex, _a_bucket, _b_bucket, dfp2_bucket| -> Result<(), RuntimeError> {
+        let config = PairConfig {
+            k_in: dec!("1"),
+            k_out: dec!("2"),
+            fee: dec!("0.005"),
+            decay_factor: dec!("0.998"),
+        };
+
+        let c_bucket = ResourceBuilder::new_fungible(OwnerRole::None) 
+            .divisibility(18)
+            .recall_roles(recall_roles! {
+                recaller => rule!(deny_all);
+                recaller_updater => rule!(require(dfp2_bucket.resource_address(&mut env)?));
+            })
+            .mint_initial_supply(10000, &mut env)?;
+
+        let result = dex.create_pair( 
+            c_bucket.take(dec!(1000), &mut env)?,
+            dfp2_bucket.take(dec!(1000), &mut env)?,
+            config,
+            dec!(1),
+            &mut env,
+        );
+        match result {
+            Ok(_) => panic!("Should've thrown an error!"),
+            Err(e) => {
+                assert!(
+                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
+                        if pm.starts_with("assertion failed:")),
+                    "Actual error thrown: {:?}", e);
+                Ok(())
+            }
+        }
     })
 }

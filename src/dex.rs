@@ -1,4 +1,5 @@
 use scrypto::prelude::*;
+use crate::helpers::*;
 use crate::constants::*;
 use crate::events::*;
 use crate::types::PairConfig;
@@ -123,6 +124,7 @@ mod plazadex {
             p0: Decimal,
         ) -> Global<PlazaPair> {
             let token = base_bucket.resource_address();
+            assure_is_not_recallable(token);
 
             // Ensure all basic criteria are met to add a new pair
             assert!(!self.blacklist.contains(&token), "Token is blacklisted");
