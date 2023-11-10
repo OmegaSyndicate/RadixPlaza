@@ -256,16 +256,30 @@ mod plazapair {
                 }
                 // Not in shortage, can just add in ratio
                 (false, false) => {
+                    // Calculate the amount of the tiny bucket to pre-deposit
+                    let deposit_part = reserve / (reserve + input_amount) * MIN_LIQUIDITY;
                     pool.protected_deposit(
-                        tiny_bucket.take(FEMTO.checked_round(min_liq_div, RoundingMode::AwayFromZero).unwrap())
+                        tiny_bucket.take(deposit_part.checked_round(min_liq_div, RoundingMode::ToZero).unwrap())
                     );
+
+                    // Contribute the input bucket and the remainder of the tiny bucket
                     let (lp_tokens, remainder) = pool.contribute((input_bucket, tiny_bucket));
                     if let Some(bucket) = remainder {
-                        assert!(bucket.resource_address() == min_liq_addr, "Added too many tokens");
+                        assert!(bucket.resource_address() == min_liq_addr, "Unexpected remainder");
                         pool.protected_deposit(bucket);
                     }
+
+                    // Take back the minimum liquidity and put it in its vault
                     min_liq.put(
                         pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
+                    );
+
+                    // Protect against numeric rounding issues returning too few LP tokens
+                    let lp_manager = lp_tokens.resource_manager();
+                    let total_supply = lp_manager.total_supply().unwrap();
+                    assert!(
+                        lp_tokens.amount() * (input_amount + reserve) > dec!(0.9999) * input_amount * total_supply,
+                        "Numeric issues for this add amount"
                     );
                     lp_tokens
                 }
@@ -305,10 +319,10 @@ mod plazapair {
                         WithdrawStrategy::Rounded(RoundingMode::ToZero)
                     );
 
-                    // Protect against numeric issues with too small liquidity
+                    // Protect against numeric issues with too large/small liquidity add
                     assert!(
                         other_bucket.amount() > dec!(0.9999) * new_lp_fraction * surplus,
-                        "Numeric issues for this add size"
+                        "Numeric issues for this add amount"
                     );
 
                     // Finally add the liquidity and add back the remainder
