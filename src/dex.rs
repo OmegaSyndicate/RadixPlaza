@@ -33,9 +33,9 @@ mod plazadex {
     /// * `blacklist: HashSet<ResourceAddress>` - Tracks blacklisted tokens.
     /// * `address_to_pair: KeyValueStore<ResourceAddress, Global<PlazaPair>>` - Links listed tokens to their
     ///    corresponding Global<PlazaPair>.
-    /// * `pair_to_lps: KeyValueStore<ComponentAddress, (ResourceAddress, ResourceAddress)>` - Contains the two LP
+    /// * `pair_to_lps: KeyValueStore<Global<PlazaPair>, (ResourceAddress, ResourceAddress)>` - Contains the two LP
     ///    token addresses for any PlazaPair created by the DEX.
-    /// * `dex_reserves: KeyValueStore<ComponentAddress, (Vault, Vault)>` - Contains the DEX-held liquidity for each
+    /// * `dex_reserves: KeyValueStore<Global<PlazaPair>, (Vault, Vault)>` - Contains the DEX-held liquidity for each
     ///    of the pairs.
     /// * `min_dfp2_liquidity: Decimal` - Specifies the minimum dfp2 liquidity for new pairs.
     /// * `pairs_owner: OwnerRole` - Badge of the exchange owner, who can perform admin functions.
