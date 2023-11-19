@@ -170,12 +170,13 @@ mod plazapair {
         /// # Arguments
         ///
         /// * `input_bucket`: A `Bucket` object representing the amount of liquidity being added to the pool.
-        /// * `is_quote`: A flag indicating if the tokens should be added to the quote pool (true) or the base
-        ///    pool (false).
+        /// * `co_liquidity_bucket`: An optional bucket that is contains the counter liquidity tokens in case the
+        ///   token that is being added is currently in shortage.
         ///
         /// # Returns
         ///
         /// * A `Bucket` object representing the amount of LP tokens received in exchange for the added liquidity.
+        /// * An `Option<Bucket>` object representing the remainder if there is any.
         ///
         /// # Panics
         ///
@@ -187,8 +188,9 @@ mod plazapair {
         /// * An `AddLiquidityEvent` is emitted after the liquidity has been successfully added to the pool.
         pub fn add_liquidity(
             &mut self,
-            mut input_bucket: Bucket,
-        ) -> Bucket {
+            input_bucket: Bucket,
+            co_liquidity_bucket: Option<Bucket>,
+        ) -> (Bucket, Option<Bucket>) {
             let is_quote = input_bucket.resource_address() == self.quote_address;
 
             // Retrieve appropriate liquidity pool
@@ -203,10 +205,6 @@ mod plazapair {
                 }
             };
 
-            let fee_bucket = input_bucket.take_advanced(
-                self.config.fee * input_bucket.amount(),
-                WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
-            );
             let input_amount = input_bucket.amount();
             let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
             let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
@@ -215,7 +213,7 @@ mod plazapair {
             let min_liq_div = min_liq_mgr.resource_type().divisibility().unwrap();
             let mut tiny_bucket = min_liq.take(MIN_LIQUIDITY);
 
-            let lp_bucket = match (reserve == ZERO, in_shortage) {
+            let (lp_bucket, remainder) = match (reserve == ZERO, in_shortage) {
                 // No liquidity present at the moment
                 (true, _) => {
                     // Reset to equilbrium if this token was in shortage
@@ -252,7 +250,7 @@ mod plazapair {
 
                     // Return the collected LP tokens to the user
                     lp_tokens.put(scale_lp);
-                    lp_tokens
+                    (lp_tokens, None)
                 }
                 // Not in shortage, can just add in ratio
                 (false, false) => {
@@ -281,70 +279,35 @@ mod plazapair {
                         lp_tokens.amount() * (input_amount + reserve) > dec!(0.9999) * input_amount * total_supply,
                         "Numeric issues for this add amount"
                     );
-                    lp_tokens
+                    (lp_tokens, None)
                 }
-                // The most difficult case. Pool is in shortage, need to calculate precisely
+                // Pool is in shortage. Need to add both the input liquidity and the co_liquidity buckets.
                 (false, true) => {
                     // We don't need our tiny bucket in this scenario
                     min_liq.put(tiny_bucket);
 
-                    // Retrieve surplus and target ratio values
-                    let (&surplus_address, &surplus) = pool.get_vault_amounts().get_index(1).unwrap();
-                    let target_ratio = self.state.target_ratio;
-                    let shortfall = target_ratio * reserve - reserve;
+                    // Collect the co_liquidity bucket
+                    let other_bucket = co_liquidity_bucket.expect("In shortage: requires counter liquidity.");
 
-                    // Compute time since previous trade and resulting decay factor for the filter
-                    let t = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
-                    let delta_t = (t - self.state.last_outgoing).max(0);
-                    let factor = Decimal::checked_powi(&self.config.decay_factor, delta_t / 60).unwrap();
-
-                    // Caculate the filtered reference price
-                    let old_pref = match is_quote {
-                        true => self.state.p0,
-                        false => ONE / self.state.p0,
-                    };
-                    let p_ref_ss = calc_p0_from_curve(shortfall, surplus, target_ratio, self.config.k_in);
-                    let p_ref = factor * old_pref + (ONE - factor) * p_ref_ss;
-
-                    // Calculate the target ratios before and after the add
-                    let new_actual = reserve + input_amount;
-                    let target = calc_target_ratio(p_ref, reserve, surplus, self.config.k_in) * reserve;
-                    let new_target = calc_target_ratio(p_ref, new_actual, surplus, self.config.k_in) * new_actual;
-
-                    // Withdraw the correct fraction of surplus to add back
-                    let new_lp_fraction = (new_target - target) / new_target;
-                    let other_bucket = pool.protected_withdraw(
-                        surplus_address,
-                        new_lp_fraction * surplus,
-                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
-                    );
-
-                    // Protect against numeric issues with too large/small liquidity add
-                    assert!(
-                        other_bucket.amount() > dec!(0.9999) * new_lp_fraction * surplus,
-                        "Numeric issues for this add amount"
-                    );
-
-                    // Finally add the liquidity and add back the remainder
+                    // Add the liquidity to the pool
                     let (lp_tokens, remainder) = pool.contribute((input_bucket, other_bucket));
-                    if let Some(bucket) = remainder {
-                        pool.protected_deposit(bucket);
-                    }
 
-                    // Update the target ratio and return the lp_tokens
-                    self.state.target_ratio = new_target / new_actual;
-                    lp_tokens
+                    // Protect against numeric rounding issues returning too few LP tokens
+                    let lp_manager = lp_tokens.resource_manager();
+                    let total_supply = lp_manager.total_supply().unwrap();
+                    assert!(
+                        lp_tokens.amount() * (input_amount + reserve) > dec!(0.9999) * input_amount * total_supply,
+                        "Insufficient co_liquidity or other numerical issue"
+                    );
+                    (lp_tokens, remainder)                    
                 }
             };
-
-            // Deposit fee bucket
-            pool.protected_deposit(fee_bucket);
         
             // Emit add liquidity event
             let lp_amount = lp_bucket.amount();
             Runtime::emit_event(AddLiquidityEvent{is_quote, token_amount: input_amount, lp_amount});
 
-            lp_bucket
+            (lp_bucket, remainder)
         }
 
         /// The function `remove_liquidity` is designed to process the withdrawal of liquidity from a specified

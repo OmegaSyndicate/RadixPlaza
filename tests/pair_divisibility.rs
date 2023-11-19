@@ -36,8 +36,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
         &mut env,
     )?;
 
-    let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(50), &mut env)?, &mut env)?;
-    let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(50), &mut env)?, &mut env)?;
+    let _ = pair.add_liquidity(base_bucket.take(dec!(49), &mut env)?, None, &mut env)?;
+    let _ = pair.add_liquidity(quote_bucket.take(dec!(49), &mut env)?, None, &mut env)?;
 
     Ok(func(env, &mut pair, base_bucket, quote_bucket)?)
 }
@@ -51,9 +51,9 @@ fn swaps_6_to_8() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let (output, _) = pair.swap(base_bucket.take(dec!(50), &mut env)?, &mut env)?;
+        let (output, _) = pair.swap(base_bucket.take(dec!(49), &mut env)?, &mut env)?;
         let output_amount = output.amount(&mut env)?;
-        assert!(output_amount == dec!(24.5), "Incorrect output amount");
+        assert!(output_amount == dec!(24.01), "Incorrect output amount: {}", output_amount);
         
         // Do another random swap to test divisibility works
         let _ = pair.swap(base_bucket.take(dec!(1.234567), &mut env)?, &mut env)?;
@@ -69,9 +69,9 @@ fn swaps_8_to_6() -> Result<(), RuntimeError> {
         _base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let (output, _) = pair.swap(quote_bucket.take(dec!(50), &mut env)?, &mut env)?;
+        let (output, _) = pair.swap(quote_bucket.take(dec!(49), &mut env)?, &mut env)?;
         let output_amount = output.amount(&mut env)?;
-        assert!(output_amount == dec!(24.5), "Incorrect output amount");
+        assert!(output_amount == dec!(24.01), "Incorrect output amount: {}", output_amount);
         
         // Do another random swap to test divisibility works
         let _ = pair.swap(quote_bucket.take(dec!(1.23456789), &mut env)?, &mut env)?;
@@ -87,12 +87,13 @@ fn adds_6_divisibility_token() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let lp_bucket = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             base_bucket.take_advanced(
-                dec!(50) / dec!(0.98),
+                dec!(49),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            None,
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
@@ -111,12 +112,13 @@ fn adds_8_divisibility_token() -> Result<(), RuntimeError> {
         _base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let lp_bucket = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             quote_bucket.take_advanced(
-                dec!(50) / dec!(0.98),
+                dec!(49),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            None,
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
@@ -135,12 +137,13 @@ fn adds_more_than_100_times_base_in_ratio() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let lp_bucket = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             base_bucket.take_advanced(
-                dec!(100000) / dec!(0.98),
+                dec!(98_000),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            None,
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
@@ -161,10 +164,11 @@ fn wont_add_more_than_100_times_quote_in_ratio() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let result = pair.add_liquidity(
             quote_bucket.take_advanced(
-                dec!(100000) / dec!(0.98),
+                dec!(98_000),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            None,
             &mut env
         );
         match result {
@@ -183,12 +187,19 @@ fn adds_large_base_during_shortage() -> Result<(), RuntimeError> {
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _ = pair.swap(quote_bucket.take(dec!(0.0001), &mut env)?, &mut env)?;
-        let lp_bucket = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             base_bucket.take_advanced(
-                dec!(100000) / dec!(0.98),
+                dec!(100000),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            Some(
+                quote_bucket.take_advanced(
+                    dec!(100),
+                    WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
+                    &mut env
+                )?
+            ),
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
@@ -196,36 +207,6 @@ fn adds_large_base_during_shortage() -> Result<(), RuntimeError> {
         assert!(lp_amount > dec!(0.99) * lp_expected, "Expected close to {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
-    })
-}
-
-#[test]
-fn rejects_excessive_quote_during_small_shortage() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let _ = pair.swap(base_bucket.take(dec!(0.0001), &mut env)?, &mut env)?;
-        let result = pair.add_liquidity(
-            quote_bucket.take_advanced(
-                dec!(100000) / dec!(0.98),
-                WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
-                &mut env
-            )?,
-            &mut env
-        );
-        match result {
-            Ok(_) => panic!("Should've thrown an error!"),
-            Err(e) => {
-                assert!(
-                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("Numeric issues for this add")),
-                    "Actual error thrown: {:?}", e);
-                Ok(())
-            }
-        }
     })
 }
 
@@ -244,6 +225,13 @@ fn rejects_small_add_during_small_base_shortage() -> Result<(), RuntimeError> {
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
+            Some(
+                quote_bucket.take_advanced(
+                    dec!(100),
+                    WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
+                    &mut env
+                )?
+            ),
             &mut env
         );
         match result {
@@ -251,7 +239,7 @@ fn rejects_small_add_during_small_base_shortage() -> Result<(), RuntimeError> {
             Err(e) => {
                 assert!(
                     matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("Numeric issues for this add")),
+                        if pm.starts_with("Insufficient co_liquidity or other numerical issue")),
                     "Actual error thrown: {:?}", e);
                 Ok(())
             }

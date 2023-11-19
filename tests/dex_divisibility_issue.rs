@@ -57,19 +57,19 @@ fn gives_back_proper_amount() -> Result<(), RuntimeError> {
     publish_and_setup(|mut env, &mut mut dex, a_bucket, _dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let output = dex.add_liquidity(a_bucket.take(dec!(1000), &mut env)?, Some(base_address), &mut env)?;
-        let expected = dec!(282.206551685924287532);
+        let (output, _) = dex.add_liquidity(a_bucket.take(dec!(1000), &mut env)?, None, Some(base_address), &mut env)?;
+        let expected = dec!(282.843843852254809703);
         let output_amount = output.amount(&mut env)?;
         assert!(output_amount == expected, "Expected output amount: {}, actual: {}", expected, output_amount);
 
-        let output = dex.add_liquidity(a_bucket.take(dec!(1000), &mut env)?, Some(base_address), &mut env)?;
-        let expected = dec!(281.78846786435109515);
+        let (output, _) = dex.add_liquidity(a_bucket.take(dec!(1000), &mut env)?, None, Some(base_address), &mut env)?;
+        let expected = dec!(282.843843852249237724);
         let output_amount = output.amount(&mut env)?;
         assert!(output_amount == expected, "Expected output amount: {}, actual: {}", expected, output_amount);
 
         // This was observed to give zero in StokeNet testing
-        let output = dex.add_liquidity(a_bucket.take(dec!(1), &mut env)?, Some(base_address), &mut env)?;
-        let expected = dec!(0.281578439178055032);
+        let (output, _) = dex.add_liquidity(a_bucket.take(dec!(1), &mut env)?, None, Some(base_address), &mut env)?;
+        let expected = dec!(0.282843843850282037);
         let output_amount = output.amount(&mut env)?;
         assert!(output_amount == expected, "Minimum output amount: {}, actual: {}", expected, output_amount);
 
@@ -82,8 +82,8 @@ fn accepts_base_add_over_100x_existing() -> Result<(), RuntimeError> {
     publish_and_setup(|mut env, &mut mut dex, a_bucket, _dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let output = dex.add_liquidity(a_bucket.take(dec!(10000), &mut env)?, Some(base_address), &mut env)?;
-        assert!(output.amount(&mut env)? == dec!(2822.065516859229082189), "Unexpected output amount: {}", output.amount(&mut env)?);
+        let (output, _) = dex.add_liquidity(a_bucket.take(dec!(10000), &mut env)?, None, Some(base_address), &mut env)?;
+        assert!(output.amount(&mut env)? == dec!(2828.438438522560077401), "Unexpected output amount: {}", output.amount(&mut env)?);
 
         Ok(())
     })
@@ -94,8 +94,8 @@ fn accepts_base_add_under_one_hundredth_existing() -> Result<(), RuntimeError> {
     publish_and_setup(|mut env, &mut mut dex, a_bucket, _dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let output = dex.add_liquidity(a_bucket.take(dec!(0.01), &mut env)?, Some(base_address), &mut env)?;
-        assert!(output.amount(&mut env)? == dec!(0.002822065516836105), "Unexpected output amount: {}", output.amount(&mut env)?);
+        let (output, _) = dex.add_liquidity(a_bucket.take(dec!(0.01), &mut env)?, None, Some(base_address), &mut env)?;
+        assert!(output.amount(&mut env)? == dec!(0.002828438438508148), "Unexpected output amount: {}", output.amount(&mut env)?);
 
         Ok(())
     })
@@ -106,8 +106,8 @@ fn accepts_quote_add_almost_100x_existing() -> Result<(), RuntimeError> {
     publish_and_setup(|mut env, &mut mut dex, a_bucket, dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let output = dex.add_liquidity(dfp2_bucket.take(dec!(49_000), &mut env)?, Some(base_address), &mut env)?;
-        assert!(output.amount(&mut env)? == dec!(2186.418156112439685156), "Unexpected output amount: {}", output.amount(&mut env)?);
+        let (output, _) = dex.add_liquidity(dfp2_bucket.take(dec!(49_000), &mut env)?, None, Some(base_address), &mut env)?;
+        assert!(output.amount(&mut env)? == dec!(2191.34683708448856168), "Unexpected output amount: {}", output.amount(&mut env)?);
 
         Ok(())
     })
@@ -118,7 +118,7 @@ fn rejects_quote_add_more_than_100x_existing() -> Result<(), RuntimeError> {
     publish_and_setup(|mut env, &mut mut dex, a_bucket, dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let result = dex.add_liquidity(dfp2_bucket.take(dec!(50_000), &mut env)?, Some(base_address), &mut env);
+        let result = dex.add_liquidity(dfp2_bucket.take(dec!(50_000), &mut env)?, None, Some(base_address), &mut env);
         match result {
             Ok(_) => panic!("Should've thrown an error!"),
             Err(_e) => Ok(())
@@ -131,8 +131,8 @@ fn accepts_quote_add_under_one_hundredth_existing() -> Result<(), RuntimeError> 
     publish_and_setup(|mut env, &mut mut dex, a_bucket, dfp2_bucket| -> Result<(), RuntimeError> {
         let base_address = a_bucket.resource_address(&mut env)?;
 
-        let output = dex.add_liquidity(dfp2_bucket.take(dec!(1), &mut env)?, Some(base_address), &mut env)?;
-        assert!(output.amount(&mut env)? == dec!(0.044620778696172218), "Unexpected output amount: {}", output.amount(&mut env)?);
+        let (output, _) = dex.add_liquidity(dfp2_bucket.take(dec!(1), &mut env)?, None, Some(base_address), &mut env)?;
+        assert!(output.amount(&mut env)? == dec!(0.044721364022132419), "Unexpected output amount: {}", output.amount(&mut env)?);
 
         Ok(())
     })

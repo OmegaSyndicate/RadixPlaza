@@ -146,8 +146,8 @@ mod plazadex {
             );
 
             // Add liquidity to new pair
-            let base_lp_bucket = pair.add_liquidity(base_bucket.into());
-            let dfp2_lp_bucket = pair.add_liquidity(dfp2_bucket.into());
+            let (base_lp_bucket, _) = pair.add_liquidity(base_bucket.into(), None);
+            let (dfp2_lp_bucket, _) = pair.add_liquidity(dfp2_bucket.into(), None);
             let base_lp_address = base_lp_bucket.resource_address();
             let dfp2_lp_address = dfp2_lp_bucket.resource_address();
 
@@ -278,7 +278,8 @@ mod plazadex {
         /// * When the `tokens` intended for the operation are not listed within the exchange.
         /// * When `base_token` is given, but it is not registered within the exchange.
         /// * When supplying DFP2 tokens without supplying a `base_token` address.
-        pub fn add_liquidity(&mut self, tokens: Bucket, base_token: Option<ResourceAddress>) -> Bucket {
+        pub fn add_liquidity(&mut self, tokens: Bucket, co_liquidity: Option<Bucket>, base_token: Option<ResourceAddress>)
+            -> (Bucket, Option<Bucket>) {
             let input_token = tokens.resource_address();
             let is_quote = input_token == self.dfp2;
 
@@ -290,7 +291,7 @@ mod plazadex {
             };
 
             // Add liquidity and return output
-            pair.add_liquidity(tokens)
+            pair.add_liquidity(tokens, co_liquidity)
         }
 
         /// Removes given liquidity from the exchange, returning two Buckets with the corresponding liquidity.

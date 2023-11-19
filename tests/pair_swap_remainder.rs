@@ -49,7 +49,7 @@ fn gracefully_swaps_from_eq_when_base_is_empty() -> Result<(), RuntimeError> {
         _base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let _ = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
         let (output, remainder) = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         let output_amount = output.amount(&mut env)?;
         let remainder_amount = remainder.expect("No return bucket found").amount(&mut env)?;
@@ -87,7 +87,7 @@ fn gracefully_swaps_from_eq_when_quote_is_empty() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let _ = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
         let (output, remainder) = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         let output_amount = output.amount(&mut env)?;
         let remainder_amount = remainder.expect("No return bucket found").amount(&mut env)?;
@@ -125,7 +125,7 @@ fn gracefully_swaps_from_quote_shortage_when_base_is_empty() -> Result<(), Runti
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let _ = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
         let _swap = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         env.set_current_time(Instant::new(3391331280));
         let (output, remainder) = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
@@ -165,7 +165,7 @@ fn gracefully_swaps_from_base_shortage_when_quote_is_empty() -> Result<(), Runti
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let _ = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
         let _swap = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
         env.set_current_time(Instant::new(3391331280));
         let (output, remainder) = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;

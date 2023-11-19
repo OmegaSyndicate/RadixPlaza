@@ -36,8 +36,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
         &mut env,
     )?;
 
-    let _lp_tokens = pair.add_liquidity(base_bucket.take(dec!(5000), &mut env)?, &mut env)?;
-    let _lp_tokens = pair.add_liquidity(quote_bucket.take(dec!(5000), &mut env)?, &mut env)?;
+    let _ = pair.add_liquidity(base_bucket.take(dec!(5000), &mut env)?, None, &mut env)?;
+    let _ = pair.add_liquidity(quote_bucket.take(dec!(5000), &mut env)?, None, &mut env)?;
 
     Ok(func(env, &mut pair, base_bucket, quote_bucket)?)
 }
@@ -73,41 +73,6 @@ fn applies_fee_to_swap() -> Result<(), RuntimeError> {
         assert!(state.shortage == Shortage::QuoteShortage, "Incorrect shortage detected");
         assert!(state.target_ratio == dec!(5050) / dec!(2550), "Incorrect target ratio detected");
         assert!(state.last_out_spot == dec!("0.25"), "Incorrect outgoing spot price deteced");
-
-        Ok(())
-    })
-}
-
-#[test]
-fn applies_fee_to_add() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        _quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let lp_bucket = pair.add_liquidity(base_bucket.take(dec!(5000) / dec!(0.98), &mut env)?, &mut env)?;
-        let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(70);
-        assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
-
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
-            env.read_component_state::<(
-                PairConfig,
-                PairState,
-                ResourceAddress,
-                ResourceAddress,
-                u8,
-                u8,
-                ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
-            ), _>(*pair).expect("Error reading state");
-
-        assert!(state.p0 == dec!(1), "Reference price shouldn't change");
-        assert!(state.shortage == Shortage::Equilibrium, "Incorrect shortage detected");
-        assert!(state.target_ratio == dec!(1), "Incorrect target ratio detected");
-        assert!(state.last_out_spot == dec!(1), "Incorrect spot price deteced");
 
         Ok(())
     })

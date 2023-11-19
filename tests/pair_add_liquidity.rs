@@ -49,8 +49,8 @@ fn initial_add_gives_correct_lp() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let add_base = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let add_quote = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
+        let (add_base, _) = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
+        let (add_quote, _) = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
         assert!(add_base.amount(&mut env)? == dec!(100), "Unexpected LP amount");
         assert!(add_quote.amount(&mut env)? == dec!(100), "Unexpected LP amount");
         Ok(())
@@ -65,10 +65,10 @@ fn second_add_goes_in_ratio() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _ = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let _ = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let add_base = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
-        let add_quote = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
+        let _ = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
+        let _ = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
+        let (add_base, _) = pair.add_liquidity(base_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
+        let (add_quote, _) = pair.add_liquidity(quote_bucket.take(dec!(1000), &mut env)?, None, &mut env)?;
         assert!(add_base.amount(&mut env)? == dec!(10), "Unexpected LP amount: {}", add_base.amount(&mut env)?);
         assert!(add_quote.amount(&mut env)? == dec!(10), "Unexpected LP amount: {}", add_quote.amount(&mut env)?);
         Ok(())
@@ -76,136 +76,49 @@ fn second_add_goes_in_ratio() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn correct_add_during_cherry_picked_base_shortage() -> Result<(), RuntimeError> {
+fn correct_add_during_base_shortage() -> Result<(), RuntimeError> {
     publish_and_setup(|
         mut env: TestEnvironment, 
         pair: &mut PlazaPair,
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let _swap = pair.swap(quote_bucket.take(dec!(5000), &mut env)?, &mut env)?;
-        let add_base = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-
-        let _initial_amount = initial.amount(&mut env)?;
-        let new_amount = add_base.amount(&mut env)?;
-
-        assert!(new_amount.checked_round(
-            12,
-            RoundingMode::ToNearestMidpointAwayFromZero
-        ).unwrap() == dec!(100), "Unexpected LP amount");
-
-        Ok(())
-    })
-}
-
-#[test]
-fn correct_add_during_cherry_picked_quote_shortage() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let _swap = pair.swap(base_bucket.take(dec!(5000), &mut env)?, &mut env)?;
-        let add_quote = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-
-        let _initial_amount = initial.amount(&mut env)?;
-        let new_amount = add_quote.amount(&mut env)?;
-
-        assert!(new_amount.checked_round(
-            12,
-            RoundingMode::ToNearestMidpointAwayFromZero
-        ).unwrap() == dec!(100), "Unexpected LP amount");
-
-        Ok(())
-    })
-}
-
-#[test]
-fn correct_add_during_small_base_shortage() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let _swap = pair.swap(quote_bucket.take(dec!(2500), &mut env)?, &mut env)?;
-        let add_base = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-
-        let initial_amount = initial.amount(&mut env)?;
-        let new_amount = add_base.amount(&mut env)?;
-
-        assert!(new_amount < initial_amount, "LP amount too large");
-        assert!(new_amount > dec!("0.99") * initial_amount, "LP amount too large");
-
-        Ok(())
-    })
-}
-
-#[test]
-fn correct_add_during_small_quote_shortage() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let _swap = pair.swap(base_bucket.take(dec!(2500), &mut env)?, &mut env)?;
-        let add_quote = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-
-        let initial_amount = initial.amount(&mut env)?;
-        let new_amount = add_quote.amount(&mut env)?;
-
-        assert!(new_amount < initial_amount, "LP amount too large");
-        assert!(new_amount > dec!("0.99") * initial_amount, "LP amount too large");
-
-        Ok(())
-    })
-}
-
-#[test]
-fn correct_add_during_larger_base_shortage() -> Result<(), RuntimeError> {
-    publish_and_setup(|
-        mut env: TestEnvironment, 
-        pair: &mut PlazaPair,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-    | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
+        let (initial, _) = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
         let _swap = pair.swap(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let add_base = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
+        let (add_base, _) = pair.add_liquidity(base_bucket.take(dec!(5000), &mut env)?, Some(quote_bucket.take(dec!(10000), &mut env)?), &mut env)?;
 
-        let initial_amount = initial.amount(&mut env)?;
+        let _initial_amount = initial.amount(&mut env)?;
         let new_amount = add_base.amount(&mut env)?;
 
-        assert!(new_amount > initial_amount, "LP amount too small");
-        assert!(new_amount < dec!("1.05") * initial_amount, "LP amount too large");
+        let rounded = new_amount.checked_round(
+            12,
+            RoundingMode::ToNearestMidpointAwayFromZero
+        ).unwrap();
+        assert!(rounded == dec!(100), "Unexpected LP amount: {}", rounded);
 
         Ok(())
     })
 }
 
 #[test]
-fn correct_add_during_larger_quote_shortage() -> Result<(), RuntimeError> {
+fn correct_add_during_quote_shortage() -> Result<(), RuntimeError> {
     publish_and_setup(|
         mut env: TestEnvironment, 
         pair: &mut PlazaPair,
         base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let initial = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
+        let (initial, _) = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
         let _swap = pair.swap(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let add_quote = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
+        let (add_quote, _) = pair.add_liquidity(quote_bucket.take(dec!(5000), &mut env)?, Some(base_bucket.take(dec!(10000), &mut env)?), &mut env)?;
 
-        let initial_amount = initial.amount(&mut env)?;
+        let _initial_amount = initial.amount(&mut env)?;
         let new_amount = add_quote.amount(&mut env)?;
 
-        assert!(new_amount > initial_amount, "LP amount too small");
-        assert!(new_amount < dec!("1.05") * initial_amount, "LP amount too large");
+        assert!(new_amount.checked_round(
+            12,
+            RoundingMode::ToNearestMidpointAwayFromZero
+        ).unwrap() == dec!(100), "Unexpected LP amount");
 
         Ok(())
     })
