@@ -30,8 +30,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
@@ -56,7 +56,7 @@ fn setup_correct_quote_shortage() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(base_bucket.take(dec!(3000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -65,8 +65,7 @@ fn setup_correct_quote_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -88,7 +87,7 @@ fn setup_correct_base_shortage() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _outgoing = pair.swap(quote_bucket.take(dec!(3000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -97,8 +96,7 @@ fn setup_correct_base_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -130,7 +128,7 @@ fn gives_correct_incoming_spot_price_quote_shortage() -> Result<(), RuntimeError
 
         assert!(output_base_amount == dec!("13.6") * input_quote_amount, "Incorrect spot price");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -139,8 +137,7 @@ fn gives_correct_incoming_spot_price_quote_shortage() -> Result<(), RuntimeError
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         let new_target = (state.target_ratio * (dec!(250) + input_quote_amount)).checked_round(
@@ -203,7 +200,7 @@ fn gives_correct_incoming_spot_price_base_shortage() -> Result<(), RuntimeError>
 
         assert!(output_quote_amount == dec!("13.6") * input_base_amount, "Incorrect spot price");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -212,8 +209,7 @@ fn gives_correct_incoming_spot_price_base_shortage() -> Result<(), RuntimeError>
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         let new_target = (state.target_ratio * (dec!(250) + input_base_amount)).checked_round(
@@ -267,7 +263,7 @@ fn trades_correct_amount_quote_shortage() -> Result<(), RuntimeError> {
         env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(quote_bucket.take(dec!(750), &mut env)?, &mut env)?;
  
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -276,8 +272,7 @@ fn trades_correct_amount_quote_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         println!("{}", format!("{}", state.p0));
@@ -303,7 +298,7 @@ fn trades_correct_amount_base_shortage() -> Result<(), RuntimeError> {
         env.set_current_time(Instant::new(3391331280));
         let (output, _) = pair.swap(base_bucket.take(dec!(750), &mut env)?, &mut env)?;
  
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -312,8 +307,7 @@ fn trades_correct_amount_base_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(output.amount(&mut env)? == dec!(3000), "Incorrect trade sizing");
@@ -340,7 +334,7 @@ fn trades_correct_amount_accross_eq_from_quote_shortage() -> Result<(), RuntimeE
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");
  
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -349,8 +343,7 @@ fn trades_correct_amount_accross_eq_from_quote_shortage() -> Result<(), RuntimeE
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1) / dec!("1.6"), "Incorrect reference price");
@@ -376,7 +369,7 @@ fn trades_correct_amount_accross_eq_from_base_shortage() -> Result<(), RuntimeEr
         
         assert!(output.amount(&mut env)? == dec!(3750), "Incorrect trade sizing");
  
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -385,8 +378,7 @@ fn trades_correct_amount_accross_eq_from_base_shortage() -> Result<(), RuntimeEr
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         //println!("{}", format!("{} {} {} {}", state.p0, state.shortage, state.target_ratio, state.last_out_spot));

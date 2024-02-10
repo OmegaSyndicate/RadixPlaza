@@ -28,8 +28,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
@@ -54,7 +54,7 @@ fn swaps_base_to_quote() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(base_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -63,8 +63,7 @@ fn swaps_base_to_quote() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -86,7 +85,7 @@ fn swaps_quote_to_base() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(quote_bucket.take(dec!(1000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -95,8 +94,7 @@ fn swaps_quote_to_base() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");

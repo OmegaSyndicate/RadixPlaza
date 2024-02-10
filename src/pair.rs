@@ -25,9 +25,6 @@ mod plazapair {
     /// always pushing the pool back towards equilibrium. The key mechanism that it uses to achieve this is by varying
     /// the degree of liquidity concentration on trades depending on their direction wrt equilibrium.
     ///
-    /// A minimum liquidity map (`min_liquidity`) is maintained to hold tiny amounts of tokens to work around
-    /// restrictions of the native Radix LP components.
-    ///
     /// This struct also stores configuration and state information for this pair.
     struct PlazaPair {
         /// Pool configuration details like fee and other operational parameters.
@@ -46,11 +43,6 @@ mod plazapair {
         base_pool: Global<TwoResourcePool>,
         /// Represents a pool that primarily holds quote tokens plus potentially some base tokens held in their place.  
         quote_pool: Global<TwoResourcePool>,
-        /// Maps pools to a Vault that holds a tiny amount of tokens to workaround native LP restrictions.
-        min_liquidity: HashMap<                          
-            ComponentAddress,
-            Vault
-        >,
     }
 
     impl PlazaPair {
@@ -80,13 +72,11 @@ mod plazapair {
         /// * A `Global<PlazaPair>` instance.
         pub fn instantiate_pair(
             owner_role: OwnerRole,
-            base_bucket: Bucket,
-            quote_bucket: Bucket,
+            base_address: ResourceAddress,
+            quote_address: ResourceAddress,
             config: PairConfig,
             initial_price: Decimal,
         ) -> Global<PlazaPair> {
-            assert!(base_bucket.amount() == MIN_LIQUIDITY, "Invalid base amount");
-            assert!(quote_bucket.amount() == MIN_LIQUIDITY, "Invalid quote amount");
             assert!(config.k_in >= MIN_K_IN, "Invalid k_in value");
             assert!(config.k_out > config.k_in, "k_out should be larger than k_in");
             assert!(config.k_out < CLIP_K_OUT_1 || config.k_out == ONE || config.k_out > CLIP_K_OUT_2, "Invalid k_out value");
@@ -102,8 +92,6 @@ mod plazapair {
             let access_rule = rule!(require(global_component_caller_badge));
 
             // Gather token properties
-            let base_address = base_bucket.resource_address();
-            let quote_address = quote_bucket.resource_address();
             let base_manager = ResourceManager::from(base_address);
             let quote_manager = ResourceManager::from(quote_address);
             let base_divisibility = base_manager.resource_type().divisibility().unwrap();
@@ -127,14 +115,6 @@ mod plazapair {
                 None,
             );
 
-            // Create vaults for the minimum liquidity
-            let base_vault = Vault::with_bucket(base_bucket);
-            let quote_vault = Vault::with_bucket(quote_bucket);
-            let pool_map: HashMap<_, _> = [
-                (base_pool.address(), quote_vault),
-                (quote_pool.address(), base_vault),
-            ].into_iter().collect();
-
             // Instantiate a PlazaPair component
             let now = Clock::current_time_rounded_to_minutes().seconds_since_unix_epoch;
             Self {
@@ -152,7 +132,6 @@ mod plazapair {
                 quote_divisibility: quote_divisibility,
                 base_pool: base_pool,
                 quote_pool: quote_pool,
-                min_liquidity: pool_map,
             }
             .instantiate()
             .prepare_to_globalize(owner_role)
@@ -193,7 +172,7 @@ mod plazapair {
         ) -> (Bucket, Option<Bucket>) {
             let is_quote = input_bucket.resource_address() == self.quote_address;
 
-            // Retrieve appropriate liquidity pool
+            // Retrieve appropriate liquidity pool and determine whether it's in shortage
             let (pool, in_shortage) = match is_quote {
                 true => {
                     let in_shortage = self.state.shortage == Shortage::QuoteShortage;
@@ -207,99 +186,34 @@ mod plazapair {
 
             let input_amount = input_bucket.amount();
             let reserve = *pool.get_vault_amounts().get_index(0).map(|(_addr, amount)| amount).unwrap();
-            let min_liq = self.min_liquidity.get_mut(&pool.address()).unwrap();
-            let min_liq_addr = min_liq.resource_address();
-            let min_liq_mgr = ResourceManager::from(min_liq_addr);
-            let min_liq_div = min_liq_mgr.resource_type().divisibility().unwrap();
-            let mut tiny_bucket = min_liq.take(MIN_LIQUIDITY);
 
+            // Add liquidity bucket(s) to the pool
             let (lp_bucket, remainder) = match (reserve == ZERO, in_shortage) {
-                // No liquidity present at the moment
                 (true, _) => {
-                    // Reset to equilbrium if this token was in shortage
+                    // Pool is empty: reset pair to equilbrium if this token was in shortage
                     if in_shortage {
                         self.state.shortage = Shortage::Equilibrium;
                         self.state.target_ratio = ONE;
                         self.state.last_out_spot = self.state.p0;
                     }
 
-                    // Simply add the tokens plus the min_liq bucket first
-                    let input_address = input_bucket.resource_address();
-                    let (mut lp_tokens, _) = pool.contribute((input_bucket, tiny_bucket));
-
-                    // Beef up amount of LP tokens by a factor of 100 for non-technical reasons
-                    let scale_bucket_input = pool.protected_withdraw(
-                        input_address,
-                        input_amount * (ONE_HUNDRED - ONE) / ONE_HUNDRED,
-                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
-                    );
-                    let scale_bucket_minliq = pool.protected_withdraw(
-                        min_liq_addr,
-                        MIN_LIQUIDITY * (ONE_HUNDRED - ONE) / ONE_HUNDRED,
-                        WithdrawStrategy::Rounded(RoundingMode::ToZero)
-                    );
-                    let (scale_lp, remainder) = pool.contribute((scale_bucket_input, scale_bucket_minliq));
-                    if let Some(bucket) = remainder {
-                        pool.protected_deposit(bucket);
-                    }
-
-                    // Take back the min_liq and put it back into the vault
-                    min_liq.put(
-                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
-                    );
-
-                    // Return the collected LP tokens to the user
-                    lp_tokens.put(scale_lp);
-                    (lp_tokens, None)
+                    // Ensure that an empty co-liquidity bucket is used
+                    let empty_bucket = Bucket::new(if is_quote { self.base_address } else { self.quote_address });
+                    pool.contribute((input_bucket, empty_bucket))
                 }
-                // Not in shortage, can just add in ratio
                 (false, false) => {
-                    // Calculate the amount of the tiny bucket to pre-deposit
-                    let deposit_part = reserve / (reserve + input_amount) * MIN_LIQUIDITY;
-                    pool.protected_deposit(
-                        tiny_bucket.take(deposit_part.checked_round(min_liq_div, RoundingMode::ToZero).unwrap())
-                    );
-
-                    // Contribute the input bucket and the remainder of the tiny bucket
-                    let (lp_tokens, remainder) = pool.contribute((input_bucket, tiny_bucket));
-                    if let Some(bucket) = remainder {
-                        assert!(bucket.resource_address() == min_liq_addr, "Unexpected remainder");
-                        pool.protected_deposit(bucket);
-                    }
-
-                    // Take back the minimum liquidity and put it in its vault
-                    min_liq.put(
-                        pool.protected_withdraw(min_liq_addr, MIN_LIQUIDITY, WithdrawStrategy::Exact)
-                    );
-
-                    // Protect against numeric rounding issues returning too few LP tokens
-                    let lp_manager = lp_tokens.resource_manager();
-                    let total_supply = lp_manager.total_supply().unwrap();
-                    assert!(
-                        lp_tokens.amount() * (input_amount + reserve) > dec!(0.9999) * input_amount * total_supply,
-                        "Numeric issues for this add amount"
-                    );
-                    (lp_tokens, None)
+                    // Pool is not in shortage, co_liquidity not required
+                    let empty_bucket = Bucket::new(if is_quote { self.base_address } else { self.quote_address });
+                    pool.contribute((input_bucket, empty_bucket))
                 }
-                // Pool is in shortage. Need to add both the input liquidity and the co_liquidity buckets.
                 (false, true) => {
-                    // We don't need our tiny bucket in this scenario
-                    min_liq.put(tiny_bucket);
-
-                    // Collect the co_liquidity bucket
-                    let other_bucket = co_liquidity_bucket.expect("In shortage: requires counter liquidity.");
-
-                    // Add the liquidity to the pool
-                    let (lp_tokens, remainder) = pool.contribute((input_bucket, other_bucket));
-
-                    // Protect against numeric rounding issues returning too few LP tokens
-                    let lp_manager = lp_tokens.resource_manager();
-                    let total_supply = lp_manager.total_supply().unwrap();
-                    assert!(
-                        lp_tokens.amount() * (input_amount + reserve) > dec!(0.9999) * input_amount * total_supply,
-                        "Insufficient co_liquidity or other numerical issue"
-                    );
-                    (lp_tokens, remainder)                    
+                    // Pool is currently in shortage. Need to add co_liquidity bucket
+                    pool.contribute(
+                        (
+                            input_bucket,
+                            co_liquidity_bucket.expect("In shortage: co-liquidity required.")
+                        )
+                    )
                 }
             };
         

@@ -41,15 +41,15 @@ fn deploys_healthy() -> Result<(), RuntimeError> {
     | -> Result<(), RuntimeError> {
         let pair = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
             &mut env,
         )?;
 
-        let (config, state, base_address, quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (config, state, base_address, quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -58,8 +58,7 @@ fn deploys_healthy() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(pair).expect("Error reading state");
 
         assert!(config == REF_CONFIG, "Config error");
@@ -75,70 +74,6 @@ fn deploys_healthy() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn fails_on_incorrect_base_amount() -> Result<(), RuntimeError> {
-    let _ = publish_and_setup(|
-        mut env, 
-        package: PackageAddress,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-        config: PairConfig
-    | {
-        let result = PlazaPair::instantiate_pair(
-            OwnerRole::None,
-            base_bucket.take(dec!("1"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
-            config,
-            dec!(1),
-            package,
-            &mut env,
-        );
-        match result {
-            Ok(_) => panic!("Should've thrown an error!"),
-            Err(e) => {
-                assert!(
-                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("Invalid base amount")),
-                    "Actual error thrown: {:?}", e);
-                Ok(())
-            }
-        }
-    })?;
-    Ok(())
-}
-
-#[test]
-fn fails_on_incorrect_quote_amount() -> Result<(), RuntimeError> {
-    let _ = publish_and_setup(|
-        mut env, 
-        package: PackageAddress,
-        base_bucket: Bucket,
-        quote_bucket: Bucket,
-        config: PairConfig
-    | {
-        let result = PlazaPair::instantiate_pair(
-            OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("1"), &mut env)?,
-            config,
-            dec!(1),
-            package,
-            &mut env,
-        );
-        match result {
-            Ok(_) => panic!("Should've thrown an error!"),
-            Err(e) => {
-                assert!(
-                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("Invalid quote amount")),
-                    "Actual error thrown: {:?}", e);
-                Ok(())
-            }
-        }
-    })?;
-    Ok(())
-}
-
-#[test]
 fn fails_on_low_k_in() -> Result<(), RuntimeError> {
     let _ = publish_and_setup(|
         mut env, 
@@ -150,8 +85,8 @@ fn fails_on_low_k_in() -> Result<(), RuntimeError> {
         config.k_in = dec!(0);
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -183,8 +118,8 @@ fn fails_if_k_out_lt_k_in() -> Result<(), RuntimeError> {
         config.k_out = dec!(0);
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -216,8 +151,8 @@ fn fails_if_k_out_too_large() -> Result<(), RuntimeError> {
         config.k_out = dec!("0.9999");
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -249,8 +184,8 @@ fn fails_for_negative_fee() -> Result<(), RuntimeError> {
         config.fee = dec!("-0.1");
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -282,8 +217,8 @@ fn fails_for_fee_gte_one() -> Result<(), RuntimeError> {
         config.fee = dec!(1);
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -315,8 +250,8 @@ fn fails_for_negative_decay_factor() -> Result<(), RuntimeError> {
         config.decay_factor = dec!("-0.5");
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -348,8 +283,8 @@ fn fails_decay_factor_gte_one() -> Result<(), RuntimeError> {
         config.decay_factor = dec!(1);
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -384,8 +319,8 @@ fn rejects_base_divisibility_lt_6() -> Result<(), RuntimeError> {
 
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            bad_bucket.take(dec!("0.0001"), &mut env)?,
-            quote_bucket.take(dec!("0.0001"), &mut env)?,
+            bad_bucket.resource_address(&mut env)?,
+            quote_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,
@@ -420,8 +355,8 @@ fn rejects_quote_divisibility_lt_6() -> Result<(), RuntimeError> {
 
         let result = PlazaPair::instantiate_pair(
             OwnerRole::None,
-            base_bucket.take(dec!("0.0001"), &mut env)?,
-            bad_bucket.take(dec!("0.0001"), &mut env)?,
+            base_bucket.resource_address(&mut env)?,
+            bad_bucket.resource_address(&mut env)?,
             config,
             dec!(1),
             package,

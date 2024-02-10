@@ -1,6 +1,5 @@
 use scrypto::prelude::*;
 use crate::helpers::*;
-use crate::constants::*;
 use crate::events::*;
 use crate::types::PairConfig;
 use crate::pair::plazapair::PlazaPair;
@@ -118,8 +117,8 @@ mod plazadex {
         /// Emits a `PairCreated` event detailing the new pair on its successful formation.
         pub fn create_pair(
             &mut self,
-            mut base_bucket: Bucket,
-            mut dfp2_bucket: Bucket,
+            base_bucket: Bucket,
+            dfp2_bucket: Bucket,
             config: PairConfig,
             p0: Decimal,
         ) -> Global<PlazaPair> {
@@ -135,12 +134,10 @@ mod plazadex {
             assert!(token != self.dfp2, "Can't add DFP2 as base token");
             
             // Instantiate new pair
-            let tiny_base_bucket = base_bucket.take(MIN_LIQUIDITY);
-            let tiny_dfp2_bucket = dfp2_bucket.take(MIN_LIQUIDITY);
             let pair = PlazaPair::instantiate_pair(
                 self.pairs_owner.clone(),
-                tiny_base_bucket,
-                tiny_dfp2_bucket,
+                base_bucket.resource_address(),
+                dfp2_bucket.resource_address(),
                 config,
                 p0
             );

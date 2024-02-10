@@ -28,8 +28,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
@@ -57,12 +57,12 @@ fn removes_part_of_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> 
         let (primary1, secondary1) = pair.remove_liquidity(base_lp.take(dec!(50), &mut env)?, false, &mut env)?;
         let (primary2, secondary2) = pair.remove_liquidity(quote_lp.take(dec!(50), &mut env)?, true, &mut env)?;
 
-        assert!(primary1.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
+        assert!(primary1.amount(&mut env)? == dec!(50), "Incorrect primary base amount");
         assert!(secondary1.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
-        assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
+        assert!(primary2.amount(&mut env)? == dec!(50), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -71,8 +71,7 @@ fn removes_part_of_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> 
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -102,7 +101,7 @@ fn removes_all_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(10000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -111,8 +110,7 @@ fn removes_all_liquidity_when_not_in_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -134,16 +132,16 @@ fn removes_part_of_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let _swap = pair.swap(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let (primary1, secondary1) = pair.remove_liquidity(base_lp.take(dec!(50), &mut env)?, false, &mut env)?;
-        let (primary2, secondary2) = pair.remove_liquidity(quote_lp.take(dec!(50), &mut env)?, true, &mut env)?;
+        let _swap = pair.swap(base_bucket.take(dec!(10_000), &mut env)?, &mut env)?;
+        let (primary1, secondary1) = pair.remove_liquidity(base_lp.take(dec!(5_000), &mut env)?, false, &mut env)?;
+        let (primary2, secondary2) = pair.remove_liquidity(quote_lp.take(dec!(5_000), &mut env)?, true, &mut env)?;
 
-        assert!(primary1.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
+        assert!(primary1.amount(&mut env)? == dec!(5_000), "Incorrect primary base amount");
         assert!(secondary1.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
-        assert!(primary2.amount(&mut env)? == dec!(2500), "Incorrect primary base amount");
-        assert!(secondary2.amount(&mut env)? == dec!(5000), "Incorrect secondary base amount");
+        assert!(primary2.amount(&mut env)? == dec!(2_500), "Incorrect primary base amount");
+        assert!(secondary2.amount(&mut env)? == dec!(5_000), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -152,8 +150,7 @@ fn removes_part_of_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -176,8 +173,8 @@ fn removes_part_of_liquidity_when_in_base_shortage() -> Result<(), RuntimeError>
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _swap = pair.swap(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
-        let (primary1, secondary1) = pair.remove_liquidity(base_lp.take(dec!(50), &mut env)?, false, &mut env)?;
-        let (primary2, secondary2) = pair.remove_liquidity(quote_lp.take(dec!(50), &mut env)?, true, &mut env)?;
+        let (primary1, secondary1) = pair.remove_liquidity(base_lp.take(dec!(5000), &mut env)?, false, &mut env)?;
+        let (primary2, secondary2) = pair.remove_liquidity(quote_lp.take(dec!(5000), &mut env)?, true, &mut env)?;
 
         //println!("{}", format!("{}", primary1.amount(&mut env)?));
         assert!(primary1.amount(&mut env)? == dec!(2500), "Incorrect primary base amount");
@@ -185,7 +182,7 @@ fn removes_part_of_liquidity_when_in_base_shortage() -> Result<(), RuntimeError>
         assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -194,8 +191,7 @@ fn removes_part_of_liquidity_when_in_base_shortage() -> Result<(), RuntimeError>
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -226,7 +222,7 @@ fn removes_all_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(5000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(10000), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -235,8 +231,7 @@ fn removes_all_liquidity_when_in_quote_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -268,7 +263,7 @@ fn removes_all_liquidity_when_in_base_shortage() -> Result<(), RuntimeError> {
         assert!(primary2.amount(&mut env)? == dec!(10000), "Incorrect primary base amount");
         assert!(secondary2.amount(&mut env)? == dec!(0), "Incorrect secondary base amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -277,8 +272,7 @@ fn removes_all_liquidity_when_in_base_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -304,7 +298,7 @@ fn swaps_properly_after_emptied_in_quote_shortage() -> Result<(), RuntimeError> 
         let (_primary2, _secondary2) = pair.remove_liquidity(quote_lp, true, &mut env)?;
         let (_output, _remainder) = pair.swap(quote_bucket.take(dec!(10000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -313,8 +307,7 @@ fn swaps_properly_after_emptied_in_quote_shortage() -> Result<(), RuntimeError> 
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");
@@ -340,7 +333,7 @@ fn swaps_properly_after_emptied_in_base_shortage() -> Result<(), RuntimeError> {
         let (_primary1, _secondary1) = pair.remove_liquidity(base_lp, false, &mut env)?;
         let (_output, _remainder) = pair.swap(base_bucket.take(dec!(10000), &mut env)?, &mut env)?;
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -349,8 +342,7 @@ fn swaps_properly_after_emptied_in_base_shortage() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");

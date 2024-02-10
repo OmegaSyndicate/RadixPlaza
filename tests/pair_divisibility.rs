@@ -28,8 +28,8 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
@@ -97,7 +97,7 @@ fn adds_6_divisibility_token() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(7);
+        let lp_expected = dec!(49);
         assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
@@ -122,7 +122,7 @@ fn adds_8_divisibility_token() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(7);
+        let lp_expected = dec!(49);
         assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
@@ -147,7 +147,7 @@ fn adds_more_than_100_times_base_in_ratio() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(14000);
+        let lp_expected = dec!(98_000);
         assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
@@ -172,7 +172,7 @@ fn adds_more_than_100_times_quote_in_ratio() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(14000);
+        let lp_expected = dec!(98_000);
         assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
@@ -190,7 +190,7 @@ fn adds_large_base_during_shortage() -> Result<(), RuntimeError> {
         let _ = pair.swap(quote_bucket.take(dec!(0.0001), &mut env)?, &mut env)?;
         let (lp_bucket, _) = pair.add_liquidity(
             base_bucket.take_advanced(
-                dec!(100000),
+                dec!(100_000),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
                 &mut env
             )?,
@@ -204,8 +204,9 @@ fn adds_large_base_during_shortage() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        let lp_expected = dec!(14000);
-        assert!(lp_amount > dec!(0.99) * lp_expected, "Expected close to {} LP tokens, received {}", lp_expected, lp_amount);
+        let lp_expected = dec!(100_000);
+        assert!(lp_amount > dec!(1.000) * lp_expected, "Expected close to {} LP tokens, received {}", lp_expected, lp_amount);
+        assert!(lp_amount < dec!(1.001) * lp_expected, "Expected close to {} LP tokens, received {}", lp_expected, lp_amount);
 
         Ok(())
     })
@@ -236,7 +237,7 @@ fn adds_small_amount_during_small_base_shortage() -> Result<(), RuntimeError> {
             &mut env
         )?;
         let lp_amount = lp_bucket.amount(&mut env)?;
-        assert!(lp_amount == dec!(0.001431428442892139), "Unexpected LP amount: {}", lp_amount);
+        assert!(lp_amount == dec!(0.010019999100244978), "Unexpected LP amount: {}", lp_amount);
 
         Ok(())
     })

@@ -28,16 +28,16 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
         &mut env,
     )?;
 
-    let _ = pair.add_liquidity(base_bucket.take(dec!(5000), &mut env)?, None, &mut env)?;
-    let _ = pair.add_liquidity(quote_bucket.take(dec!(5000), &mut env)?, None, &mut env)?;
+    let _ = pair.add_liquidity(base_bucket.take(dec!(5_000), &mut env)?, None, &mut env)?;
+    let _ = pair.add_liquidity(quote_bucket.take(dec!(5_000), &mut env)?, None, &mut env)?;
 
     Ok(func(env, &mut pair, base_bucket, quote_bucket)?)
 }
@@ -52,11 +52,11 @@ fn applies_fee_to_swap() -> Result<(), RuntimeError> {
         base_bucket: Bucket,
         _quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let (output, _) = pair.swap(base_bucket.take(dec!(5000), &mut env)?, &mut env)?;
+        let (output, _) = pair.swap(base_bucket.take(dec!(5_000), &mut env)?, &mut env)?;
         let output_amount = output.amount(&mut env)?;
         assert!(output_amount == dec!(2450), "Incorrect output amount");
 
-        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool, _min_liq) = 
+        let (_config, state, _base_address, _quote_address, _bdiv, _qdiv, _base_pool, _quote_pool) = 
             env.read_component_state::<(
                 PairConfig,
                 PairState,
@@ -65,8 +65,7 @@ fn applies_fee_to_swap() -> Result<(), RuntimeError> {
                 u8,
                 u8,
                 ComponentAddress,
-                ComponentAddress,
-                HashMap<ComponentAddress, Vault>
+                ComponentAddress
             ), _>(*pair).expect("Error reading state");
 
         assert!(state.p0 == dec!(1), "Reference price shouldn't change");

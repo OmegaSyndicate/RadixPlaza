@@ -28,16 +28,16 @@ pub fn publish_and_setup<F>(func: F) -> Result<(), RuntimeError>
 
     let mut pair = PlazaPair::instantiate_pair(
         OwnerRole::None,
-        base_bucket.take(dec!("0.0001"), &mut env)?,
-        quote_bucket.take(dec!("0.0001"), &mut env)?,
+        base_bucket.resource_address(&mut env)?,
+        quote_bucket.resource_address(&mut env)?,
         config,
         dec!(1),
         package,
         &mut env,
     )?;
 
-    let (base_lp, _) = pair.add_liquidity(base_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
-    let (quote_lp, _) = pair.add_liquidity(quote_bucket.take(dec!(10000), &mut env)?, None, &mut env)?;
+    let (base_lp, _) = pair.add_liquidity(base_bucket.take(dec!(10_000), &mut env)?, None, &mut env)?;
+    let (quote_lp, _) = pair.add_liquidity(quote_bucket.take(dec!(10_000), &mut env)?, None, &mut env)?;
 
     Ok(func(env, &mut pair, base_lp, quote_lp, base_bucket, quote_bucket)?)
 }
