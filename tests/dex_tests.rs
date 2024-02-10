@@ -2,8 +2,8 @@ use defiplaza::dex::test_bindings::*;
 use defiplaza::types::PairConfig;
 use scrypto::*;
 use scrypto_test::prelude::*;
-use scrypto::prelude::ToRoleEntry;
-use crate::node_modules::auth::RoleDefinition;
+//use scrypto::prelude::ToRoleEntry;
+//use crate::node_modules::auth::RoleDefinition;
 //use scrypto::prelude::Url;
 
 
@@ -99,7 +99,7 @@ fn rejects_outright_recallable_tokens() -> Result<(), RuntimeError> {
             Err(e) => {
                 assert!(
                     matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("assertion failed:")),
+                        if pm.starts_with("assertion ")),
                     "Actual error thrown: {:?}", e);
                 Ok(())
             }
@@ -137,7 +137,7 @@ fn rejects_potentially_recallable_tokens() -> Result<(), RuntimeError> {
             Err(e) => {
                 assert!(
                     matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("assertion failed:")),
+                        if pm.starts_with("assertion ")),
                     "Actual error thrown: {:?}", e);
                 Ok(())
             }

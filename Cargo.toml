@@ -5,15 +5,15 @@ edition = "2021"
 resolver = "2"
 
 [dependencies]
-sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
+sbor = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+scrypto = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
 
 [dev-dependencies]
-transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
-radix-engine-interface = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.0.0" }
+transaction = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+radix-engine = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+scrypto-unit = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+scrypto-test = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
+radix-engine-interface = { git = "https://github.com/radixdlt/radixdlt-scrypto", tag = "v1.1.1" }
 defiplaza = { path = ".", features = ["test"] }
 
 [profile.release]

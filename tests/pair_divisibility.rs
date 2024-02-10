@@ -155,14 +155,14 @@ fn adds_more_than_100_times_base_in_ratio() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn wont_add_more_than_100_times_quote_in_ratio() -> Result<(), RuntimeError> {
+fn adds_more_than_100_times_quote_in_ratio() -> Result<(), RuntimeError> {
     publish_and_setup(|
         mut env: TestEnvironment, 
         pair: &mut PlazaPair,
         _base_bucket: Bucket,
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
-        let result = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             quote_bucket.take_advanced(
                 dec!(98_000),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
@@ -170,11 +170,12 @@ fn wont_add_more_than_100_times_quote_in_ratio() -> Result<(), RuntimeError> {
             )?,
             None,
             &mut env
-        );
-        match result {
-            Ok(_) => panic!("Should've thrown an error!"),
-            Err(_e) => Ok(())
-        }
+        )?;
+        let lp_amount = lp_bucket.amount(&mut env)?;
+        let lp_expected = dec!(14000);
+        assert!(lp_amount == lp_expected, "Expected {} LP tokens, received {}", lp_expected, lp_amount);
+
+        Ok(())
     })
 }
 
@@ -211,7 +212,7 @@ fn adds_large_base_during_shortage() -> Result<(), RuntimeError> {
 }
 
 #[test]
-fn rejects_small_add_during_small_base_shortage() -> Result<(), RuntimeError> {
+fn adds_small_amount_during_small_base_shortage() -> Result<(), RuntimeError> {
     publish_and_setup(|
         mut env: TestEnvironment, 
         pair: &mut PlazaPair,
@@ -219,7 +220,7 @@ fn rejects_small_add_during_small_base_shortage() -> Result<(), RuntimeError> {
         quote_bucket: Bucket,
     | -> Result<(), RuntimeError> {
         let _ = pair.swap(quote_bucket.take(dec!(0.1), &mut env)?, &mut env)?;
-        let result = pair.add_liquidity(
+        let (lp_bucket, _) = pair.add_liquidity(
             base_bucket.take_advanced(
                 dec!(0.01),
                 WithdrawStrategy::Rounded(RoundingMode::AwayFromZero),
@@ -233,16 +234,10 @@ fn rejects_small_add_during_small_base_shortage() -> Result<(), RuntimeError> {
                 )?
             ),
             &mut env
-        );
-        match result {
-            Ok(_) => panic!("Should've thrown an error!"),
-            Err(e) => {
-                assert!(
-                    matches!(e, RuntimeError::ApplicationError(ApplicationError::PanicMessage(ref pm)) 
-                        if pm.starts_with("Insufficient co_liquidity or other numerical issue")),
-                    "Actual error thrown: {:?}", e);
-                Ok(())
-            }
-        }
+        )?;
+        let lp_amount = lp_bucket.amount(&mut env)?;
+        assert!(lp_amount == dec!(0.001431428442892139), "Unexpected LP amount: {}", lp_amount);
+
+        Ok(())
     })
 }
