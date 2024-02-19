@@ -9,9 +9,9 @@ use crate::pair::plazapair::PlazaPair;
 mod plazadex {
     enable_method_auth! { 
         methods { 
-            create_pair => PUBLIC;
+            create_pair => restrict_to: [OWNER];
             swap => PUBLIC;
-            add_liquidity => PUBLIC;
+            add_liquidity => restrict_to: [OWNER];
             remove_liquidity => PUBLIC;
             quote => PUBLIC;
             get_lp_tokens => PUBLIC;

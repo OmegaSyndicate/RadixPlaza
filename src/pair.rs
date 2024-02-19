@@ -16,6 +16,15 @@ mod plazapair {
         swap => _SWAP_ROYALTY;
     }
 
+    enable_method_auth! { 
+        methods { 
+            add_liquidity => restrict_to: [OWNER];
+            remove_liquidity => PUBLIC;
+            swap => PUBLIC;
+            quote => PUBLIC;
+        }
+    }
+
     /// `PlazaPair` struct represents a liquidity pair with fixed configuration
     ///
     /// ## Description
