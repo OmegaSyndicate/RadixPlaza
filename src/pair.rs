@@ -14,6 +14,7 @@ mod plazapair {
         remove_liquidity => Free;
         quote => Free;
         get_state => Free;
+        get_pools => Free;
         swap => _SWAP_ROYALTY;
     }
 
@@ -604,6 +605,14 @@ mod plazapair {
         /// * `state: PairState` - The current state parameters of the pair.
         pub fn get_state(&self) -> PairState {
             self.state
+        }
+
+        /// Returns the pool components holding the base and quote liquidity
+        ///
+        /// # Returns
+        /// * `base_pool: Global<TwoResourcePool>` - Pool containing base LP liquidity.
+        pub fn get_pools(&self) -> (Global<TwoResourcePool>, Global<TwoResourcePool>) {
+            (self.base_pool, self.quote_pool)
         }
 
         /// Determines the liquidity pool to be used and its affiliated target ratio based on the current pair state 
