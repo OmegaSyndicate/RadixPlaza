@@ -14,6 +14,7 @@ mod plazapair {
         remove_liquidity => Free;
         quote => Free;
         get_state => Free;
+        get_tokens => Free;
         get_pools => Free;
         swap => _SWAP_ROYALTY;
     }
@@ -610,7 +611,17 @@ mod plazapair {
         /// Returns the pool components holding the base and quote liquidity
         ///
         /// # Returns
+        /// * `base_address: ResourceAddress` - Address of the base token.
+        /// * `quote_address: ResourceAddress` - Address of the quote token.
+        pub fn get_tokens(&self) -> (ResourceAddress, ResourceAddress) {
+            (self.base_address, self.quote_address)
+        }
+
+        /// Returns the pool components holding the base and quote liquidity
+        ///
+        /// # Returns
         /// * `base_pool: Global<TwoResourcePool>` - Pool containing base LP liquidity.
+        /// * `quote_pool: Global<TwoResourcePool>` - Pool containing quote LP liquidity.
         pub fn get_pools(&self) -> (Global<TwoResourcePool>, Global<TwoResourcePool>) {
             (self.base_pool, self.quote_pool)
         }
