@@ -1,0 +1,18 @@
+
+CALL_METHOD
+  Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+    "create_proof_of_non_fungibles"
+    Address("resource_rdx1nfxxxxxxxxxxpkgwnrxxxxxxxxx002558553505xxxxxxxxxpkgwnr")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("[0d7f3e0efd4a452ca228e3ecaf21fa9a2cc3309cb4302dd8b6d200c12d21]")
+    )
+;
+
+CLAIM_PACKAGE_ROYALTIES
+    Address("package_rdx1p4lnurhaffzjeg3gu0k27g06ngkvxvyuksczmk9k6gqvztfpks8r7l");
+
+CALL_METHOD
+    Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+;

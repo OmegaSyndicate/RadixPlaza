@@ -13,6 +13,9 @@ mod plazapair {
         add_liquidity => Free;
         remove_liquidity => Free;
         quote => Free;
+        get_state => Free;
+        get_tokens => Free;
+        get_pools => Free;
         swap => _SWAP_ROYALTY;
     }
 
@@ -604,6 +607,32 @@ mod plazapair {
             let allocation = TradeAllocation{base_base, base_quote, quote_base, quote_quote};
 
             (output_amount - fee, remainder, fee, allocation, new_state)
+        }
+
+        /// Returns the current state struct describing the pair state to the caller
+        ///
+        /// # Returns
+        /// * `state: PairState` - The current state parameters of the pair.
+        pub fn get_state(&self) -> PairState {
+            self.state
+        }
+
+        /// Returns the pool components holding the base and quote liquidity
+        ///
+        /// # Returns
+        /// * `base_address: ResourceAddress` - Address of the base token.
+        /// * `quote_address: ResourceAddress` - Address of the quote token.
+        pub fn get_tokens(&self) -> (ResourceAddress, ResourceAddress) {
+            (self.base_address, self.quote_address)
+        }
+
+        /// Returns the pool components holding the base and quote liquidity
+        ///
+        /// # Returns
+        /// * `base_pool: Global<TwoResourcePool>` - Pool containing base LP liquidity.
+        /// * `quote_pool: Global<TwoResourcePool>` - Pool containing quote LP liquidity.
+        pub fn get_pools(&self) -> (Global<TwoResourcePool>, Global<TwoResourcePool>) {
+            (self.base_pool, self.quote_pool)
         }
 
         /// Determines the liquidity pool to be used and its affiliated target ratio based on the current pair state 
