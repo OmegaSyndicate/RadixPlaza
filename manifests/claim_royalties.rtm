@@ -1,4 +1,4 @@
-
+# v1
 CALL_METHOD
   Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
     "create_proof_of_non_fungibles"
@@ -10,6 +10,19 @@ CALL_METHOD
 
 CLAIM_PACKAGE_ROYALTIES
     Address("package_rdx1p4lnurhaffzjeg3gu0k27g06ngkvxvyuksczmk9k6gqvztfpks8r7l");
+
+# v1.5
+CALL_METHOD
+  Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+    "create_proof_of_non_fungibles"
+    Address("resource_rdx1n2zhyhf709zpyq0qp53putz285cld98r4zppec8fxag5xka9k6gsll")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+
+CLAIM_PACKAGE_ROYALTIES
+    Address("package_rdx1p4dhfl7qwthqqu6p2267m5nedlqnzdvfxdl6q7h8g85dflx8n06p93");
 
 CALL_METHOD
     Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
