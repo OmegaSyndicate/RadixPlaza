@@ -9,4 +9,4 @@ pub const FOUR: Decimal = dec!(4);                                  // four
 pub const MIN_K_IN: Decimal = dec!(0.001);                          // 10^-3
 pub const CLIP_K_OUT_1: Decimal = dec!(0.999);                      // 0.999
 pub const CLIP_K_OUT_2: Decimal = dec!(1.001);                      // 1.001
-pub const _SWAP_ROYALTY: RoyaltyAmount = Usd(dec!(0.05));           // $0.05
+pub const _SWAP_ROYALTY: RoyaltyAmount = Usd(dec!(0.1));           // $0.10

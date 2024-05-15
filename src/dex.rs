@@ -152,8 +152,8 @@ mod plazadex {
             let base_manager = ResourceManager::from(token);
             let symbol = base_manager.get_metadata("symbol")
                 .unwrap_or(Some("XXXXX".to_owned())).unwrap_or("XXXXX".to_owned());
-            let base_name = format!("Defiplaza {} Base", symbol);
-            let quote_name = format!("Defiplaza {} Quote", symbol);
+            let base_name = format!("DogeCubeX {} Base", symbol);
+            let quote_name = format!("DogeCubeX {} Quote", symbol);
             let base_icon = Url::of(format!(
                 "https://assets.defiplaza.net/lptokens/{}_base.png",
                 Runtime::bech32_encode_address(base_manager.address()))
@@ -167,7 +167,7 @@ mod plazadex {
             let base_lp_manager = ResourceManager::from(base_lp_address);
             let dfp2_lp_manager = ResourceManager::from(dfp2_lp_address);
             base_lp_manager.set_metadata("symbol", "BASELP".to_owned());
-            dfp2_lp_manager.set_metadata("symbol", "DFP2LP".to_owned());
+            dfp2_lp_manager.set_metadata("symbol", "XRDLP".to_owned());
             base_lp_manager.set_metadata("name", base_name);
             dfp2_lp_manager.set_metadata("name", quote_name);
             base_lp_manager.set_metadata("icon_url", base_icon);

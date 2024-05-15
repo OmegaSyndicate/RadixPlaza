@@ -25,6 +25,9 @@ mod plazapair {
             remove_liquidity => PUBLIC;
             swap => PUBLIC;
             quote => PUBLIC;
+            get_pools => PUBLIC;
+            get_state => PUBLIC;
+            get_tokens => PUBLIC;
         }
     }
 
