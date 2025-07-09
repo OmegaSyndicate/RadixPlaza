@@ -1,7 +1,7 @@
 CALL_FUNCTION
-  Address("package_rdx1p4dhfl7qwthqqu6p2267m5nedlqnzdvfxdl6q7h8g85dflx8n06p93")
+  Address("package_tdx_2_1phznxc7wfw33j8fpaz48cmh8pfl03f2u3sepsjwvgylh0za9kw4x4f")
   "PlazaDex"
   "instantiate_dex"
-  Address("resource_rdx1t4dekrf58h0r28s3c93z92w3jt5ngx87jzd63mgc597zmf3534rxfv") # quote token
-  Address("resource_rdx1n2zhyhf709zpyq0qp53putz285cld98r4zppec8fxag5xka9k6gsll") # owner badge
+  Address("resource_tdx_2_1tknvdyqeuavj0p8x3nxeddt5wvk7nwwst3yusa8fzvp6yzjfe5tzyu") # quote token
+  Address("resource_tdx_2_1n2dclslc8a2tyag6mqhn65lxthvdln8t50u36qjr40eqy4962yannw") # owner badge
 ;

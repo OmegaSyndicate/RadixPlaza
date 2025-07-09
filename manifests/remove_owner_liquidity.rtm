@@ -1,13 +1,35 @@
 
 CALL_METHOD
-  Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+  Address("account_rdx12xsk2m90lf9wwpwhz5cr3d3p2p4sdy2p82apnpuqrumpel38da2wgp")
     "create_proof_of_non_fungibles"
-    Address("resource_rdx1n2zhyhf709zpyq0qp53putz285cld98r4zppec8fxag5xka9k6gsll")
+    Address("resource_rdx1nfsw8ajeztt0l62uc3re7gkyjgm5xrqndq5wsy34wcftvw0qljwzgp")
     Array<NonFungibleLocalId>(
         NonFungibleLocalId("#1#")
     )
 ;
 
+# BTC
+CALL_METHOD
+	Address("component_rdx1cq34ta4ssvtyxm3vf0l4eleunt7uz9ha5wyzrc965xqafdueadpy4x")
+	"withdraw_owned_liquidity"
+	Address("component_rdx1cpv5g5a86qezw0g46w2ph8ydlu2m7jnzxw9p4lx6593qn9fmnwerta")
+;
+
+# ETH
+CALL_METHOD
+	Address("component_rdx1cq34ta4ssvtyxm3vf0l4eleunt7uz9ha5wyzrc965xqafdueadpy4x")
+	"withdraw_owned_liquidity"
+	Address("component_rdx1crwdzvlv7djtkug9gmvp9ejun0gm0w6cvkpfqycw8fcp4gg82eftjc")
+;
+
+# USDC
+CALL_METHOD
+	Address("component_rdx1cq34ta4ssvtyxm3vf0l4eleunt7uz9ha5wyzrc965xqafdueadpy4x")
+	"withdraw_owned_liquidity"
+	Address("component_rdx1cpw85pmjl8ujjq7kp50lgh3ej5hz3ky9x65q2cjqvg4efnhcmfpz27")
+;
+
+# USDT
 CALL_METHOD
 	Address("component_rdx1cq34ta4ssvtyxm3vf0l4eleunt7uz9ha5wyzrc965xqafdueadpy4x")
 	"withdraw_owned_liquidity"
@@ -15,7 +37,7 @@ CALL_METHOD
 ;
 
 CALL_METHOD
-    Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+    Address("account_rdx12xsk2m90lf9wwpwhz5cr3d3p2p4sdy2p82apnpuqrumpel38da2wgp")
     "deposit_batch"
     Expression("ENTIRE_WORKTOP")
 ;

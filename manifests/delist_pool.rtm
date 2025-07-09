@@ -1,0 +1,47 @@
+
+CALL_METHOD
+  Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1n2dclslc8a2tyag6mqhn65lxthvdln8t50u36qjr40eqy4962yannw")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+
+CALL_METHOD
+	Address("component_tdx_2_1cz0azwwptt359ppsfw83yfge2g00hpjwkt303c804ypzn64gxrcrd7")
+	"withdraw_owned_liquidity"
+	Address("component_tdx_2_1cry3lmah2znevfrhjc7rv45jkrrt6y5aky2qdan254rry3pa646c9v")
+;
+
+TAKE_ALL_FROM_WORKTOP
+    Address("resource_tdx_2_1t5mn3haverlk3zfleq2vhch0xpfgkkz9cm828gmwngr7r4h0wwqv66")
+    Bucket("base");
+
+CALL_METHOD
+    Address("component_tdx_2_1cz0azwwptt359ppsfw83yfge2g00hpjwkt303c804ypzn64gxrcrd7")
+	"remove_liquidity"
+	Bucket("base")
+;
+
+TAKE_ALL_FROM_WORKTOP
+    Address("resource_tdx_2_1t5ul4e29nm9cg4h3xjhgs9sw0zh4qy0kudn55vxu790705vnrf5550")
+    Bucket("quote");
+
+CALL_METHOD
+    Address("component_tdx_2_1cz0azwwptt359ppsfw83yfge2g00hpjwkt303c804ypzn64gxrcrd7")
+	"remove_liquidity"
+	Bucket("quote")
+;
+
+CALL_METHOD
+    Address("component_tdx_2_1cz0azwwptt359ppsfw83yfge2g00hpjwkt303c804ypzn64gxrcrd7")
+	"delist"
+	Address("resource_tdx_2_1thmmlyqldthwyn95xsrensumfqpneszex2jzm55msm58a4zhpfhvr7")
+;
+
+CALL_METHOD
+    Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+    "deposit_batch"
+    Expression("ENTIRE_WORKTOP")
+;

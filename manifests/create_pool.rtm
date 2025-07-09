@@ -1,0 +1,43 @@
+
+CALL_METHOD
+  Address("account_tdx_2_12ycsedykz4ke8l09k53y3gn2rs8hne8kens5kg4rn3gup33k0uld76")
+    "create_proof_of_non_fungibles"
+    Address("resource_tdx_2_1n2dclslc8a2tyag6mqhn65lxthvdln8t50u36qjr40eqy4962yannw")
+    Array<NonFungibleLocalId>(
+        NonFungibleLocalId("#1#")
+    )
+;
+
+CALL_METHOD
+  Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+  "withdraw"
+  Address("resource_rdx1t5ywq4c6nd2lxkemkv4uzt8v7x7smjcguzq5sgafwtasa6luq7fclq")
+  Decimal("500");
+
+CALL_METHOD
+  Address("account_rdx12x2a5dft0gszufcce98ersqvsd8qr5kzku968jd50n8w4qyl9awecr")
+  "withdraw"
+  Address("resource_rdx1t4kc5ljyrwlxvg54s6gnctt7nwwgx89h9r2gvrpm369s23yhzyyzlx")
+  Decimal("500");
+
+TAKE_ALL_FROM_WORKTOP
+  Address("resource_rdx1t5ywq4c6nd2lxkemkv4uzt8v7x7smjcguzq5sgafwtasa6luq7fclq")
+  Bucket("dfp2_bucket");
+
+TAKE_ALL_FROM_WORKTOP
+  Address("resource_rdx1t4kc5ljyrwlxvg54s6gnctt7nwwgx89h9r2gvrpm369s23yhzyyzlx")
+  Bucket("token_bucket");
+
+CALL_METHOD
+	Address("component_rdx1cqy7sq3mxj2whhlqlryy05hzs96m0ajnv23e7j7vanmdwwlccnmz68")
+	"create_pair"
+	Bucket("token_bucket")
+	Bucket("dfp2_bucket")
+	Tuple(
+		Decimal("1"),
+		Decimal("2"),
+		Decimal("0.01"),
+      code Decimal("0.9995")
+	)
+	Decimal("1")
+;
